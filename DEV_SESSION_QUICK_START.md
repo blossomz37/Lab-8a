@@ -125,6 +125,72 @@ python app.py                    # Start development server
 4. **Document as You Go**: Update memory.json during development, not after
 5. **Archive Completed Work**: Keep root directory clean for active docs only
 
+### Server Management & Conflict Resolution
+Our battle-tested approach for handling development server conflicts:
+
+#### 1. **Server Status Check First** (Before starting any server)
+```bash
+# Check what's running on our development ports
+lsof -ti:8000,8001 | head -5                # Show PIDs of processes on ports 8000/8001
+ps aux | grep "python.*app" | grep -v grep  # Check for existing app processes
+curl -s http://localhost:8000/api 2>/dev/null && echo "Server responding" || echo "No server"
+```
+
+#### 2. **Identify If It's Our App** (Critical step)
+```bash
+# Test if the running server is actually our trope app
+curl -s "http://localhost:8000/api" | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    if 'database_info' in data and 'tropes' in data['database_info']:
+        print(f'✅ Our trope app is running ({data[\"database_info\"][\"tropes\"]} tropes)')
+    else:
+        print('❌ Different app running on port 8000')
+except:
+    print('❌ No valid API response - unknown server')
+"
+```
+
+#### 3. **Smart Restart Decision Matrix**
+- **✅ Keep Running**: If it's our app and we're only making frontend changes
+- **🔄 Restart Required**: If we're modifying Python code (app.py, endpoints, etc.)
+- **🛑 Kill & Restart**: If it's a different app or unresponsive
+- **🚨 Port Conflict**: If unknown process is blocking our ports
+
+#### 4. **Clean Server Management Commands**
+```bash
+# Gentle shutdown (try first)
+pkill -f "python.*app" || true
+
+# Force kill if needed (nuclear option)
+sudo lsof -ti:8000,8001 | xargs -r sudo kill -9
+
+# Start fresh instance
+python app.py                    # Development mode
+# or
+./scripts/start_server.sh        # Production-like with Gunicorn
+```
+
+#### 5. **Validation After Restart**
+```bash
+# Quick health check to confirm our app is running correctly
+sleep 2 && curl -s "http://localhost:8000/api" | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    print(f'✅ Server healthy: {len(data[\"endpoints\"])} endpoints, {data[\"database_info\"][\"tropes\"]} tropes')
+except Exception as e:
+    print(f'❌ Server issues: {e}')
+"
+```
+
+### Development Workflow Integration
+- **Before Coding**: Always check server status and validate it's our app
+- **During Development**: Only restart if making backend changes
+- **After Changes**: Quick API test to ensure server is still responsive
+- **Session End**: Leave server running for next session (saves startup time)
+
 ### Common Development Commands
 ```bash
 # Single test run
