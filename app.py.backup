@@ -1,11 +1,40 @@
-from flask import Flask, jsonify, request, render_template, send_file, make_response
+from flask import Flask, render_template, jsonify, request, send_file
+from flask_cors import CORS
+import sqlite3
+import uuid
+import json
+import csv
+import io
+import tempfile
+import os
+from datetime import datetime
+            "trope_detail": "/api/tropes/{id}",
+            "search": "/api/search",
+            "analytics": "/api/analytics",
+            "export_csv": "/api/export/csv",
+            "export_json": "/api/export/json"
+        },
+        "features": [
+            "Full CRUD operations for tropes",
+            "Category management and filtering", 
+            "Advanced sorting and search",
+            "Data export and analytics",
+            "Real-time statistics"
+        ]
+    })end_file
+from flask_cors import CORS
+import sqlite3
+import uuid
+import json
+import csv
+import io
+import tempfile
+import os
+from datetime import datetime
 from flask_cors import CORS
 import sqlite3
 import os
 import uuid
-import csv
-import io
-from datetime import datetime
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for frontend integration later
@@ -44,49 +73,73 @@ def home():
 
 @app.route('/api')
 def api_info():
-    """API information and available endpoints"""
+    """Basic API documentation endpoint"""
     return jsonify({
-        "name": "Personal Trope Database API",
-        "version": "4.5.0",
-        "description": "API for managing tropes, categories, and analytics",
+        "message": "Trope Database API is running!",
         "endpoints": {
-            "categories": "/api/categories",
             "tropes": "/api/tropes",
-            "trope_detail": "/api/tropes/{id}",
-            "search": "/api/search",
-            "analytics": "/api/analytics",
-            "export_csv": "/api/export/csv"
-        },
-        "features": [
-            "Full CRUD operations for tropes",
-            "Category management and filtering", 
-            "Advanced sorting and search",
-            "Data export and analytics",
-            "Real-time statistics"
-        ]
+            "categories": "/api/categories",
+            "trope_detail": "/api/tropes/{id}"
+        }
     })
 
 @app.route('/api/tropes')
 def get_tropes():
-    """Get all tropes with their categories"""
+    """Get all tropes with their categories, supports sorting and filtering"""
     try:
         conn = get_db_connection()
         
-        # Get all tropes with their associated categories
-        query = """
+        # Get query parameters
+        sort_by = request.args.get('sort', 'name')  # name, description
+        sort_order = request.args.get('order', 'asc')  # asc, desc
+        filter_category = request.args.get('filter_category', None)
+        
+        # Validate sort parameters
+        valid_sorts = ['name', 'description']
+        valid_orders = ['asc', 'desc']
+        
+        if sort_by not in valid_sorts:
+            sort_by = 'name'
+        if sort_order not in valid_orders:
+            sort_order = 'asc'
+        
+        # Build base query
+        base_query = """
         SELECT 
             t.id,
             t.name,
             t.description,
-            GROUP_CONCAT(c.name) as categories
+            GROUP_CONCAT(c.name) as categories,
+            GROUP_CONCAT(c.id) as category_ids
         FROM tropes t
         LEFT JOIN trope_categories tc ON t.id = tc.trope_id
         LEFT JOIN categories c ON tc.category_id = c.id
-        GROUP BY t.id, t.name, t.description
-        ORDER BY t.name
         """
         
-        tropes = conn.execute(query).fetchall()
+        # Add category filtering if specified
+        where_clause = ""
+        params = []
+        
+        if filter_category:
+            where_clause = """
+            WHERE t.id IN (
+                SELECT DISTINCT tc2.trope_id 
+                FROM trope_categories tc2 
+                JOIN categories c2 ON tc2.category_id = c2.id 
+                WHERE c2.name = ?
+            )
+            """
+            params.append(filter_category)
+        
+        # Complete query with grouping and sorting
+        query = f"""
+        {base_query}
+        {where_clause}
+        GROUP BY t.id, t.name, t.description
+        ORDER BY t.{sort_by} {sort_order.upper()}
+        """
+        
+        tropes = conn.execute(query, params).fetchall()
         conn.close()
         
         # Convert to list of dictionaries and split categories
@@ -98,13 +151,22 @@ def get_tropes():
                 # Format each category name
                 category_names = trope_dict['categories'].split(',')
                 trope_dict['categories'] = [format_category_name(cat) for cat in category_names]
+                # Keep category IDs for internal use
+                if 'category_ids' in trope_dict and trope_dict['category_ids']:
+                    trope_dict['category_ids'] = trope_dict['category_ids'].split(',')
+                else:
+                    trope_dict['category_ids'] = []
             else:
                 trope_dict['categories'] = []
+                trope_dict['category_ids'] = []
             result.append(trope_dict)
         
         return jsonify({
             "count": len(result),
-            "tropes": result
+            "tropes": result,
+            "sort_by": sort_by,
+            "sort_order": sort_order,
+            "filter_category": filter_category
         })
         
     except Exception as e:
@@ -642,69 +704,6 @@ def search():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route('/api/analytics')
-def get_analytics():
-    """Get database analytics and statistics"""
-    try:
-        conn = get_db_connection()
-        
-        # Basic counts
-        trope_count = conn.execute('SELECT COUNT(*) as count FROM tropes').fetchone()['count']
-        category_count = conn.execute('SELECT COUNT(*) as count FROM categories').fetchone()['count']
-        
-        # Category usage statistics
-        category_usage = conn.execute("""
-        SELECT 
-            c.name,
-            c.id,
-            COUNT(tc.trope_id) as trope_count
-        FROM categories c
-        LEFT JOIN trope_categories tc ON c.id = tc.category_id
-        GROUP BY c.id, c.name
-        ORDER BY trope_count DESC
-        """).fetchall()
-        
-        # Most popular categories
-        popular_categories = []
-        for cat in category_usage[:5]:
-            popular_categories.append({
-                'name': format_category_name(cat['name']),
-                'trope_count': cat['trope_count']
-            })
-        
-        # Calculate averages
-        avg_categories_per_trope = conn.execute("""
-        SELECT AVG(category_count) as avg_count
-        FROM (
-            SELECT COUNT(tc.category_id) as category_count
-            FROM tropes t
-            LEFT JOIN trope_categories tc ON t.id = tc.trope_id
-            GROUP BY t.id
-        )
-        """).fetchone()['avg_count'] or 0
-        
-        conn.close()
-        
-        analytics = {
-            'summary': {
-                'total_tropes': trope_count,
-                'total_categories': category_count,
-                'avg_categories_per_trope': round(avg_categories_per_trope, 2)
-            },
-            'popular_categories': popular_categories,
-            'category_distribution': [
-                {
-                    'name': format_category_name(cat['name']),
-                    'count': cat['trope_count']
-                } for cat in category_usage
-            ]
-        }
-        
-        return jsonify(analytics)
-        
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
 @app.route('/api/export/csv')
 def export_csv():
     """Export all tropes and categories to CSV format"""
@@ -750,16 +749,170 @@ def export_csv():
         csv_data = output.getvalue()
         output.close()
         
-        # Return CSV as direct response
-        response = make_response(csv_data)
+        # Create file-like object for download
+        csv_buffer = io.BytesIO()
+        csv_buffer.write(csv_data.encode('utf-8'))
+        csv_buffer.seek(0)
         
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         filename = f'tropes_export_{timestamp}.csv'
         
-        response.headers['Content-Type'] = 'text/csv'
-        response.headers['Content-Disposition'] = f'attachment; filename={filename}'
+        return send_file(
+            csv_buffer,
+            mimetype='text/csv',
+            as_attachment=True,
+            download_name=filename
+        )
         
-        return response
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/export/json')
+def export_json():
+    """Export complete database backup in JSON format"""
+    try:
+        conn = get_db_connection()
+        
+        # Export tropes
+        trope_query = """
+        SELECT 
+            t.id,
+            t.name,
+            t.description,
+            GROUP_CONCAT(c.id) as category_ids,
+            GROUP_CONCAT(c.name) as category_names
+        FROM tropes t
+        LEFT JOIN trope_categories tc ON t.id = tc.trope_id
+        LEFT JOIN categories c ON tc.category_id = c.id
+        GROUP BY t.id, t.name, t.description
+        ORDER BY t.name
+        """
+        
+        tropes = conn.execute(trope_query).fetchall()
+        tropes_data = []
+        
+        for trope in tropes:
+            trope_dict = dict_from_row(trope)
+            if trope_dict['category_ids']:
+                trope_dict['category_ids'] = trope_dict['category_ids'].split(',')
+                trope_dict['category_names'] = [format_category_name(cat) for cat in trope_dict['category_names'].split(',')]
+            else:
+                trope_dict['category_ids'] = []
+                trope_dict['category_names'] = []
+            tropes_data.append(trope_dict)
+        
+        # Export categories
+        categories = conn.execute('SELECT * FROM categories ORDER BY name').fetchall()
+        categories_data = [dict_from_row(cat) for cat in categories]
+        
+        conn.close()
+        
+        # Create complete backup
+        backup_data = {
+            'export_info': {
+                'timestamp': datetime.now().isoformat(),
+                'version': '1.0',
+                'application': 'Personal Trope Database'
+            },
+            'statistics': {
+                'total_tropes': len(tropes_data),
+                'total_categories': len(categories_data)
+            },
+            'tropes': tropes_data,
+            'categories': categories_data
+        }
+        
+        # Create JSON response
+        json_data = json.dumps(backup_data, indent=2)
+        json_buffer = io.BytesIO()
+        json_buffer.write(json_data.encode('utf-8'))
+        json_buffer.seek(0)
+        
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f'tropes_backup_{timestamp}.json'
+        
+        return send_file(
+            json_buffer,
+            mimetype='application/json',
+            as_attachment=True,
+            download_name=filename
+        )
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/analytics')
+def get_analytics():
+    """Get database analytics and statistics"""
+    try:
+        conn = get_db_connection()
+        
+        # Basic counts
+        trope_count = conn.execute('SELECT COUNT(*) as count FROM tropes').fetchone()['count']
+        category_count = conn.execute('SELECT COUNT(*) as count FROM categories').fetchone()['count']
+        
+        # Category usage statistics
+        category_usage = conn.execute("""
+        SELECT 
+            c.name,
+            c.id,
+            COUNT(tc.trope_id) as trope_count
+        FROM categories c
+        LEFT JOIN trope_categories tc ON c.id = tc.category_id
+        GROUP BY c.id, c.name
+        ORDER BY trope_count DESC
+        """).fetchall()
+        
+        # Most popular categories
+        popular_categories = []
+        for cat in category_usage[:5]:
+            popular_categories.append({
+                'name': format_category_name(cat['name']),
+                'trope_count': cat['trope_count']
+            })
+        
+        # Calculate averages
+        avg_categories_per_trope = conn.execute("""
+        SELECT AVG(category_count) as avg_count
+        FROM (
+            SELECT COUNT(tc.category_id) as category_count
+            FROM tropes t
+            LEFT JOIN trope_categories tc ON t.id = tc.trope_id
+            GROUP BY t.id
+        )
+        """).fetchone()['avg_count'] or 0
+        
+        # Unused categories
+        unused_categories = conn.execute("""
+        SELECT c.name
+        FROM categories c
+        LEFT JOIN trope_categories tc ON c.id = tc.category_id
+        WHERE tc.category_id IS NULL
+        """).fetchall()
+        
+        conn.close()
+        
+        analytics = {
+            'summary': {
+                'total_tropes': trope_count,
+                'total_categories': category_count,
+                'avg_categories_per_trope': round(avg_categories_per_trope, 2),
+                'unused_categories': len(unused_categories)
+            },
+            'popular_categories': popular_categories,
+            'category_distribution': [
+                {
+                    'name': format_category_name(cat['name']),
+                    'count': cat['trope_count']
+                } for cat in category_usage
+            ],
+            'data_health': {
+                'unused_categories': [format_category_name(cat['name']) for cat in unused_categories],
+                'database_size': f"{trope_count + category_count} total records"
+            }
+        }
+        
+        return jsonify(analytics)
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500

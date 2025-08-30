@@ -7,7 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
+### Added - Phase 4.4: Enhanced User Experience ✅
+- **Advanced Sorting**: GET /api/tropes now supports `sort` (name/description) and `order` (asc/desc) parameters
+- **Category Filtering**: GET /api/tropes supports `filter_category` parameter for server-side filtering
+- **UI Controls**: Added sorting dropdowns and category filter dropdown to tropes section
+- **Results Counter**: Dynamic display showing "X tropes" based on current filters
+- **Responsive Controls**: Mobile-optimized control layout with proper winter theme integration
+- **Enhanced API Response**: API now returns sort_by, sort_order, and filter_category in response
+
+### Technical Improvements - Phase 4.4
+- Enhanced `loadData()` method in app.js supports URL parameters for sorting/filtering
+- Added `setupControls()`, `handleControlChange()`, and `updateResultsCount()` methods
+- New CSS section `.controls-section` with responsive design and winter theme consistency  
+- SQL query optimization with parameter validation and injection prevention
+- Maintained backward compatibility with existing API consumers
+
+### Added - Previous Releases
 - Continuous Integration: GitHub Actions workflow at `.github/workflows/ci.yml` to run tests on push and pull requests.
 - Development helper: `Makefile` with `setup`, `test`, and `clean` targets for quick onboarding.
 - Dev Container: `.devcontainer/` configuration (Dockerfile + `devcontainer.json`) that creates a project-local `.venv` and forwards port 8000.

@@ -18,6 +18,7 @@ class TropeApp {
     async init() {
         this.setupEventListeners();
         await this.loadData();
+        this.setupControls();
         this.showSection('tropes');
     }
     
@@ -46,13 +47,25 @@ class TropeApp {
         });
     }
     
-    async loadData() {
+    async loadData(sortBy = 'name', sortOrder = 'asc', filterCategory = '') {
         this.showLoading();
         
         try {
-            // Load tropes and categories
+            // Build API URL with sorting and filtering parameters
+            let tropeUrl = '/api/tropes';
+            const params = new URLSearchParams();
+            
+            if (sortBy) params.append('sort', sortBy);
+            if (sortOrder) params.append('order', sortOrder);
+            if (filterCategory) params.append('filter_category', filterCategory);
+            
+            if (params.toString()) {
+                tropeUrl += '?' + params.toString();
+            }
+            
+            // Load tropes with filters and categories
             const [tropesResponse, categoriesResponse] = await Promise.all([
-                fetch('/api/tropes'),
+                fetch(tropeUrl),
                 fetch('/api/categories')
             ]);
             
@@ -69,9 +82,71 @@ class TropeApp {
             this.filteredData.tropes = [...this.data.tropes];
             this.filteredData.categories = [...this.data.categories];
             
+            // Update results count
+            this.updateResultsCount();
+            
         } catch (error) {
             this.showError('Failed to load data. Please make sure the API server is running.');
             console.error('Error loading data:', error);
+        }
+    }
+    
+    updateResultsCount() {
+        const countElement = document.getElementById('resultsCount');
+        if (countElement) {
+            const count = this.filteredData.tropes.length;
+            countElement.textContent = `${count} trope${count !== 1 ? 's' : ''}`;
+        }
+    }
+    
+    setupControls() {
+        // Populate category filter dropdown
+        const categoryFilter = document.getElementById('categoryFilter');
+        if (categoryFilter && this.data.categories) {
+            // Clear existing options (except "All Categories")
+            categoryFilter.innerHTML = '<option value="">All Categories</option>';
+            
+            // Add category options
+            this.data.categories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category.name;
+                option.textContent = category.display_name;
+                categoryFilter.appendChild(option);
+            });
+        }
+        
+        // Setup event handlers
+        const sortSelect = document.getElementById('sortSelect');
+        const orderSelect = document.getElementById('orderSelect');
+        
+        if (sortSelect) {
+            sortSelect.addEventListener('change', () => this.handleControlChange());
+        }
+        
+        if (orderSelect) {
+            orderSelect.addEventListener('change', () => this.handleControlChange());
+        }
+        
+        if (categoryFilter) {
+            categoryFilter.addEventListener('change', () => this.handleControlChange());
+        }
+    }
+    
+    async handleControlChange() {
+        const sortSelect = document.getElementById('sortSelect');
+        const orderSelect = document.getElementById('orderSelect');
+        const categoryFilter = document.getElementById('categoryFilter');
+        
+        const sortBy = sortSelect ? sortSelect.value : 'name';
+        const sortOrder = orderSelect ? orderSelect.value : 'asc';
+        const filterCategory = categoryFilter ? categoryFilter.value : '';
+        
+        // Reload data with new parameters
+        await this.loadData(sortBy, sortOrder, filterCategory);
+        
+        // Re-render tropes if we're on the tropes section
+        if (document.getElementById('tropesSection').style.display !== 'none') {
+            this.renderTropes();
         }
     }
     
@@ -105,6 +180,9 @@ class TropeApp {
                     break;
                 case 'categories':
                     this.renderCategories();
+                    break;
+                case 'analytics':
+                    this.renderAnalytics();
                     break;
                 case 'create':
                     this.renderCreateForm();
@@ -179,6 +257,109 @@ class TropeApp {
         container.innerHTML = html;
     }
     
+    async renderAnalytics() {
+        const container = document.getElementById('analyticsContent');
+        container.innerHTML = '<div class="loading">Loading analytics...</div>';
+        
+        try {
+            const response = await fetch('/api/analytics');
+            if (!response.ok) {
+                throw new Error('Failed to load analytics');
+            }
+            
+            const analytics = await response.json();
+            
+            // Setup export button
+            this.setupExportButton();
+            
+            // Render analytics content
+            const html = `
+                <div class="analytics-stats">
+                    <div class="stat-card">
+                        <span class="stat-number">${analytics.summary.total_tropes}</span>
+                        <span class="stat-label">Total Tropes</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number">${analytics.summary.total_categories}</span>
+                        <span class="stat-label">Categories</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number">${analytics.summary.avg_categories_per_trope}</span>
+                        <span class="stat-label">Avg Categories per Trope</span>
+                    </div>
+                </div>
+                
+                <div class="category-chart">
+                    <h4>🏆 Most Popular Categories</h4>
+                    ${this.renderCategoryChart(analytics.popular_categories)}
+                </div>
+            `;
+            
+            container.innerHTML = html;
+            
+        } catch (error) {
+            container.innerHTML = `<div class="error">Failed to load analytics: ${error.message}</div>`;
+            console.error('Analytics error:', error);
+        }
+    }
+    
+    renderCategoryChart(categories) {
+        if (!categories || categories.length === 0) {
+            return '<div class="text-muted">No category data available.</div>';
+        }
+        
+        const maxCount = categories[0].trope_count;
+        
+        return categories.map(category => `
+            <div class="category-bar">
+                <span class="category-name">${this.escapeHtml(category.name)}</span>
+                <div class="category-progress">
+                    <div class="category-progress-fill" style="width: ${(category.trope_count / maxCount) * 100}%"></div>
+                </div>
+                <span class="category-count">${category.trope_count}</span>
+            </div>
+        `).join('');
+    }
+    
+    setupExportButton() {
+        const exportBtn = document.getElementById('exportCsvBtn');
+        if (exportBtn) {
+            exportBtn.onclick = () => this.exportCsv();
+        }
+    }
+    
+    async exportCsv() {
+        try {
+            const exportBtn = document.getElementById('exportCsvBtn');
+            if (exportBtn) {
+                exportBtn.disabled = true;
+                exportBtn.textContent = '⏳ Exporting...';
+            }
+            
+            // Trigger download
+            window.location.href = '/api/export/csv';
+            
+            // Reset button after delay
+            setTimeout(() => {
+                if (exportBtn) {
+                    exportBtn.disabled = false;
+                    exportBtn.textContent = '📥 Export CSV';
+                }
+            }, 2000);
+            
+        } catch (error) {
+            console.error('Export error:', error);
+            const exportBtn = document.getElementById('exportCsvBtn');
+            if (exportBtn) {
+                exportBtn.disabled = false;
+                exportBtn.textContent = '❌ Export Failed';
+                setTimeout(() => {
+                    exportBtn.textContent = '📥 Export CSV';
+                }, 3000);
+            }
+        }
+    }
+
     async showTropeDetail(tropeId) {
         this.showLoading();
         

@@ -224,6 +224,80 @@ body {
     display: block;
 }
 
+/* Controls Section */
+.controls-section {
+    background: var(--winter-surface);
+    border: 1px solid var(--winter-border);
+    border-radius: 12px;
+    padding: var(--space-5);
+    margin-bottom: var(--space-5);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-5);
+    align-items: center;
+}
+
+.sort-controls,
+.filter-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.sort-controls label,
+.filter-controls label {
+    font-weight: 500;
+    color: var(--winter-text);
+    white-space: nowrap;
+}
+
+.control-select {
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--winter-border);
+    border-radius: 6px;
+    background: white;
+    color: var(--winter-text);
+    font-size: var(--text-sm);
+    min-width: 100px;
+    transition: all 0.2s ease;
+}
+
+.control-select:focus {
+    outline: none;
+    border-color: var(--winter-primary);
+    box-shadow: 0 0 0 3px rgba(76, 110, 245, 0.1);
+}
+
+.control-select:hover {
+    border-color: var(--winter-primary-light);
+}
+
+.results-info {
+    margin-left: auto;
+    font-size: var(--text-sm);
+    color: var(--gray-600);
+    font-weight: 500;
+}
+
+/* Responsive Controls */
+@media (max-width: 768px) {
+    .controls-section {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--space-4);
+    }
+    
+    .sort-controls,
+    .filter-controls {
+        justify-content: space-between;
+    }
+    
+    .results-info {
+        margin-left: 0;
+        text-align: center;
+    }
+}
+
 /* Loading and Error States */
 .loading {
     text-align: center;
@@ -723,6 +797,123 @@ body {
 .mt-20 { margin-top: var(--space-5); }
 
 /* High Contrast Mode Support */
+/* Phase 4.5: Analytics Section */
+.analytics-container {
+    padding: var(--space-6);
+}
+
+.analytics-container h2 {
+    color: var(--winter-text);
+    font-size: var(--text-2xl);
+    font-weight: 600;
+    margin-bottom: var(--space-6);
+    text-align: center;
+}
+
+.export-section {
+    background: var(--winter-surface);
+    border: 1px solid var(--winter-border);
+    border-radius: 12px;
+    padding: var(--space-5);
+    margin-bottom: var(--space-6);
+}
+
+.export-section h3 {
+    color: var(--winter-text);
+    font-size: var(--text-lg);
+    font-weight: 600;
+    margin-bottom: var(--space-4);
+}
+
+.export-buttons {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+}
+
+.export-help {
+    color: var(--gray-600);
+    font-size: var(--text-sm);
+    font-style: italic;
+}
+
+.analytics-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--space-5);
+    margin-bottom: var(--space-6);
+}
+
+.stat-card {
+    background: white;
+    border: 1px solid var(--winter-border);
+    border-radius: 8px;
+    padding: var(--space-5);
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.stat-number {
+    font-size: var(--text-3xl);
+    font-weight: 700;
+    color: var(--winter-primary);
+    display: block;
+}
+
+.stat-label {
+    font-size: var(--text-sm);
+    color: var(--gray-600);
+    margin-top: var(--space-2);
+}
+
+.category-chart {
+    background: white;
+    border: 1px solid var(--winter-border);
+    border-radius: 8px;
+    padding: var(--space-5);
+}
+
+.category-chart h4 {
+    color: var(--winter-text);
+    font-size: var(--text-lg);
+    font-weight: 600;
+    margin-bottom: var(--space-4);
+}
+
+.category-bar {
+    display: flex;
+    align-items: center;
+    margin-bottom: var(--space-3);
+    gap: var(--space-3);
+}
+
+.category-name {
+    min-width: 120px;
+    font-size: var(--text-sm);
+    color: var(--winter-text);
+}
+
+.category-progress {
+    flex: 1;
+    height: 20px;
+    background: var(--gray-200);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.category-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--winter-primary), var(--winter-primary-light));
+    transition: width 0.3s ease;
+}
+
+.category-count {
+    font-size: var(--text-sm);
+    color: var(--gray-600);
+    font-weight: 500;
+}
+
 @media (prefers-contrast: high) {
     :root {
         --gray-600: #2d3748;

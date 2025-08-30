@@ -18,6 +18,7 @@
         <div class="nav">
             <button data-section="tropes" class="active">All Tropes</button>
             <button data-section="categories">Categories</button>
+            <button data-section="analytics">📊 Analytics</button>
             <button data-section="create" class="create-button">+ Create Trope</button>
         </div>
         
@@ -39,6 +40,33 @@
         <div class="content">
             <!-- Tropes Section -->
             <div id="tropesSection" class="section active">
+                <!-- Controls Section -->
+                <div class="controls-section">
+                    <div class="sort-controls">
+                        <label for="sortSelect">Sort by:</label>
+                        <select id="sortSelect" class="control-select">
+                            <option value="name">Name</option>
+                            <option value="description">Description</option>
+                        </select>
+                        
+                        <select id="orderSelect" class="control-select">
+                            <option value="asc">A-Z</option>
+                            <option value="desc">Z-A</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-controls">
+                        <label for="categoryFilter">Filter by category:</label>
+                        <select id="categoryFilter" class="control-select">
+                            <option value="">All Categories</option>
+                        </select>
+                    </div>
+                    
+                    <div class="results-info">
+                        <span id="resultsCount">Loading...</span>
+                    </div>
+                </div>
+                
                 <div id="tropesContent">
                     <div class="loading">Loading tropes...</div>
                 </div>
@@ -48,6 +76,29 @@
             <div id="categoriesSection" class="section">
                 <div id="categoriesContent">
                     <div class="loading">Loading categories...</div>
+                </div>
+            </div>
+            
+            <!-- Analytics Section -->
+            <div id="analyticsSection" class="section">
+                <div class="analytics-container">
+                    <h2>📊 Database Analytics</h2>
+                    
+                    <!-- Export Controls -->
+                    <div class="export-section">
+                        <h3>🔄 Data Export</h3>
+                        <div class="export-buttons">
+                            <button id="exportCsvBtn" class="btn btn-secondary">
+                                📥 Export CSV
+                            </button>
+                            <span class="export-help">Download all tropes and categories as CSV file</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Analytics Content -->
+                    <div id="analyticsContent">
+                        <div class="loading">Loading analytics...</div>
+                    </div>
                 </div>
             </div>
             
