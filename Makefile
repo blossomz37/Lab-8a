@@ -1,3 +1,19 @@
+VENV := .venv
+PY := $(VENV)/bin/python
+PIP := $(VENV)/bin/pip
+
+.PHONY: setup test clean
+
+setup:
+	python -m venv $(VENV)
+	$(PIP) install --upgrade pip setuptools wheel
+	$(PIP) install -r requirements.txt
+
+test:
+	$(PY) -m pytest -q
+
+clean:
+	rm -rf $(VENV)
 # Makefile for Tropes Manager
 # Provides convenient commands for development tasks
 

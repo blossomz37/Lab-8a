@@ -1,5 +1,7 @@
 # Personal Trope Database
 
+[![CI](https://github.com/blossomz37/Lab-8a/actions/workflows/ci.yml/badge.svg)](https://github.com/blossomz37/Lab-8a/actions/workflows/ci.yml)
+
 A fast, private, and user-friendly local web application for managing a personal database of writing tropes. Built with Flask, SQLite, and a clean web interface.
 
 ## 🚀 Quick Start
@@ -10,6 +12,15 @@ python -m venv venv
 source venv/bin/activate  # On Mac/Linux
 pip install -r requirements.txt
 ```
+
+## For students
+
+Quick checklist to get started (recommended: VS Code Dev Container):
+
+- Open the repo in VS Code and use "Dev Containers: Reopen in Container". The container will create a `.venv` and install dependencies and test tools.
+- Or locally: `python -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt`.
+- Run tests: `./scripts/run_tests.sh` or `make test`.
+
 
 2. **Start the Server:**
 ```bash

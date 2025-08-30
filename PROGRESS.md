@@ -92,6 +92,13 @@ curl -X POST http://localhost:8000/api/tropes \
 - Pagination for large datasets
 - Performance optimizations
 
+### Developer Experience Improvements (recent)
+- Added Dev Container support (`.devcontainer/`) with a container-local `.venv` for reproducible student environments.
+- Added GitHub Actions CI (`.github/workflows/ci.yml`) to run tests on push/PR.
+- Added `Makefile` with `make setup` and `make test` for quick onboarding.
+- Added `scripts/run_tests.sh` test helper and a VS Code `Run Tests (venv)` task in `.vscode/tasks.json`.
+- Added `CONTRIBUTING.md` and updated `README.md` with a "For students" quick-start section.
+
 ## 📋 Pending Phases
 
 ### Phase 5: Advanced Search & Filtering

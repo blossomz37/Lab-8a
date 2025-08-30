@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Continuous Integration: GitHub Actions workflow at `.github/workflows/ci.yml` to run tests on push and pull requests.
+- Development helper: `Makefile` with `setup`, `test`, and `clean` targets for quick onboarding.
+- Dev Container: `.devcontainer/` configuration (Dockerfile + `devcontainer.json`) that creates a project-local `.venv` and forwards port 8000.
+- Test helper script: `scripts/run_tests.sh` - creates `.venv`, installs runtime and test deps, runs pytest.
+- VS Code task: `.vscode/tasks.json` providing a "Run Tests (venv)" task that invokes the test helper.
+- Documentation: `CONTRIBUTING.md` and a "For students" section added to `README.md` describing the recommended workflow.
+
+### Changed
+- README: added a CI status badge and a short "For students" quick-start section.
+
+
 ## [Phase 4.3 Enhanced] - 2025-08-29
 
 ### 🎨 Major UI/UX Overhaul
