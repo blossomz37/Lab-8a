@@ -1,17 +1,73 @@
-# Tropes Manager
+# Personal Trope Database
 
-A fast, private, and user-friendly local web application for managing writing tropes. Built with Flask, SQLite, and vanilla JavaScript.
+A fast, private, and user-friendly local web application for managing a personal database of writing tropes. Built with Flask, SQLite, and a clean web interface.
 
-## Features
+## 🚀 Quick Start
 
-- 🔍 **Powerful Search**: Real-time search across tropes and categories
-- 📝 **CRUD Operations**: Create, read, update, and delete tropes
-- 🎯 **Category Management**: Organized by genre categories
-- 📱 **Responsive Design**: Works on desktop and mobile
-- 🔒 **Local Storage**: All data stays on your machine
-- ⚡ **Fast Performance**: Optimized for quick searches and navigation
+1. **Setup Environment:**
+```bash
+python -m venv venv
+source venv/bin/activate  # On Mac/Linux
+pip install -r requirements.txt
+```
 
-## Project Structure
+2. **Start the Server:**
+```bash
+source venv/bin/activate
+gunicorn --bind 0.0.0.0:8000 app:app --daemon
+```
+
+3. **Access the Application:**
+- Web Interface: http://localhost:8000
+- API Documentation: http://localhost:8000/api
+
+## ✅ Current Features (Phase 4.1 Complete)
+
+- 🔍 **Full-text Search**: Search across 153 tropes and 23 categories
+- � **Browse Tropes**: View all tropes with category associations
+- �️ **Category Management**: Organized by genre categories
+- ➕ **Create Tropes**: Full trope creation with category support via API
+- 📱 **Responsive Web Interface**: Clean, functional design
+- 🔒 **Local Database**: SQLite with 153 pre-loaded tropes
+- ⚡ **Production Ready**: Gunicorn server deployment
+
+## 🛠️ Technical Architecture
+
+**Backend:**
+- **Framework**: Flask 2.3.3 with Flask-CORS
+- **Server**: Gunicorn 23.0.0 (production deployment)  
+- **Database**: SQLite with UUID primary keys
+- **API**: RESTful JSON endpoints
+
+**Database:**
+- **153 Tropes** with full descriptions and category associations
+- **23 Categories** (Romance, Dark Romance, Paranormal, etc.)
+- **Many-to-many relationships** between tropes and categories
+
+## 📡 API Endpoints
+
+### Read Operations
+- `GET /api/` - API documentation
+- `GET /api/tropes` - List all tropes (153 total)
+- `GET /api/tropes/<id>` - Individual trope details
+- `GET /api/categories` - List all categories (23 total)
+- `GET /api/search?q=<query>` - Full-text search
+
+### Write Operations ✅ NEW
+- `POST /api/tropes` - Create new trope with categories
+
+**Create Trope Example:**
+```bash
+curl -X POST http://localhost:8000/api/tropes \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "New Trope Name",
+    "description": "Detailed description of the trope and its usage...",
+    "categories": ["Paranormal", "Dark Romance"]
+  }'
+```
+
+## 🗂️ Project Structure
 
 ```
 Lab-8a/

@@ -2,6 +2,7 @@ from flask import Flask, jsonify, request, render_template
 from flask_cors import CORS
 import sqlite3
 import os
+import uuid
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for frontend integration later
@@ -91,6 +92,145 @@ def get_tropes():
             "tropes": result
         })
         
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/tropes', methods=['POST'])
+def create_trope():
+    """Create a new trope"""
+    try:
+        # Get JSON data from request
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({"error": "No JSON data provided"}), 400
+            
+        # Validate required fields
+        if not data.get('name'):
+            return jsonify({"error": "Trope name is required"}), 400
+            
+        if not data.get('description'):
+            return jsonify({"error": "Trope description is required"}), 400
+        
+        name = data['name'].strip()
+        description = data['description'].strip()
+        category_ids = data.get('category_ids', [])
+        category_names = data.get('categories', [])
+        
+        # Convert category names to IDs if provided
+        if category_names and not category_ids:
+            conn = get_db_connection()
+            # Convert display names to database names (reverse of format_category_name)
+            db_names = [name.lower().replace(' ', '_') for name in category_names]
+            placeholders = ','.join(['?' for _ in db_names])
+            category_rows = conn.execute(
+                f'SELECT id, name FROM categories WHERE name IN ({placeholders})',
+                db_names
+            ).fetchall()
+            category_ids = [row['id'] for row in category_rows]
+            
+            if len(category_ids) != len(category_names):
+                found_names = [row['name'] for row in category_rows]
+                missing_db_names = [name for name in db_names if name not in found_names]
+                # Convert back to display names for error message
+                missing_display = [name.replace('_', ' ').title() for name in missing_db_names]
+                conn.close()
+                return jsonify({"error": f"Invalid category names: {', '.join(missing_display)}"}), 400
+            
+            conn.close()
+        
+        # Validate name length
+        if len(name) < 2:
+            return jsonify({"error": "Trope name must be at least 2 characters"}), 400
+            
+        if len(name) > 200:
+            return jsonify({"error": "Trope name must be less than 200 characters"}), 400
+            
+        # Validate description length
+        if len(description) < 10:
+            return jsonify({"error": "Trope description must be at least 10 characters"}), 400
+            
+        if len(description) > 2000:
+            return jsonify({"error": "Trope description must be less than 2000 characters"}), 400
+        
+        conn = get_db_connection()
+        
+        # Check if trope name already exists
+        existing = conn.execute(
+            'SELECT id FROM tropes WHERE LOWER(name) = LOWER(?)', 
+            (name,)
+        ).fetchone()
+        
+        if existing:
+            return jsonify({"error": "A trope with this name already exists"}), 409
+        
+        # Generate UUID for new trope
+        trope_id = str(uuid.uuid4())
+        
+        # Insert the new trope
+        cursor = conn.execute(
+            'INSERT INTO tropes (id, name, description) VALUES (?, ?, ?)',
+            (trope_id, name, description)
+        )
+        
+        # Add category associations if provided
+        if category_ids:
+            # Validate that all category IDs exist
+            placeholders = ','.join(['?' for _ in category_ids])
+            valid_categories = conn.execute(
+                f'SELECT id FROM categories WHERE id IN ({placeholders})',
+                category_ids
+            ).fetchall()
+            
+            if len(valid_categories) != len(category_ids):
+                # Rollback the trope insertion
+                conn.rollback()
+                return jsonify({"error": "One or more category IDs are invalid"}), 400
+            
+            # Insert category associations
+            for category_id in category_ids:
+                conn.execute(
+                    'INSERT INTO trope_categories (trope_id, category_id) VALUES (?, ?)',
+                    (trope_id, category_id)
+                )
+        
+        conn.commit()
+        
+        # Fetch the created trope with its categories for response
+        query = """
+        SELECT 
+            t.id,
+            t.name,
+            t.description,
+            GROUP_CONCAT(c.name) as categories,
+            GROUP_CONCAT(c.id) as category_ids
+        FROM tropes t
+        LEFT JOIN trope_categories tc ON t.id = tc.trope_id
+        LEFT JOIN categories c ON tc.category_id = c.id
+        WHERE t.id = ?
+        GROUP BY t.id, t.name, t.description
+        """
+        
+        trope = conn.execute(query, (trope_id,)).fetchone()
+        
+        if trope:
+            trope_dict = dict_from_row(trope)
+            # Format categories
+            if trope_dict['categories']:
+                category_names = trope_dict['categories'].split(',')
+                trope_dict['categories'] = [format_category_name(cat) for cat in category_names]
+                trope_dict['category_ids'] = trope_dict['category_ids'].split(',')
+            else:
+                trope_dict['categories'] = []
+                trope_dict['category_ids'] = []
+            
+            return jsonify({
+                "message": "Trope created successfully",
+                "trope": trope_dict
+            }), 201
+        else:
+            return jsonify({"error": "Failed to retrieve created trope"}), 500
+            
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -311,7 +451,7 @@ def main():
         exit(1)
     
     print(f"Starting Flask app with database at: {DB_PATH}")
-    app.run(debug=True, host='0.0.0.0', port=8000)
+    app.run(debug=True, host='0.0.0.0', port=8000, use_reloader=False)
 
 if __name__ == '__main__':
     main()
