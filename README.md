@@ -74,16 +74,21 @@ Lab-8a/
 
 5. **Start the server:**
    ```bash
-   # Option 1: Using the startup script
-   chmod +x scripts/start_server.sh
+   # Option 1: Using the startup script (recommended)
    ./scripts/start_server.sh
    
-   # Option 2: Direct Python command
+   # Option 2: Using development helper
+   python dev.py start
+   
+   # Option 3: Using Makefile
+   make start
+   
+   # Option 4: Direct Python command
    python app.py
    ```
 
 6. **Access the application:**
-   Open your web browser and go to `http://localhost:5000`
+   Open your web browser and go to `http://localhost:8000`
 
 ## Usage
 
