@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title or "Trope Database" }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>Personal Trope Database</h1>
+            <p>Your curated collection of writing tropes and literary devices</p>
+        </div>
+        
+        <!-- Navigation -->
+        <div class="nav">
+            <button data-section="tropes" class="active">All Tropes</button>
+            <button data-section="categories">Categories</button>
+        </div>
+        
+        <!-- Search Section -->
+        <div class="search-section">
+            <div class="search-box">
+                <input 
+                    type="text" 
+                    id="searchInput" 
+                    class="search-input" 
+                    placeholder="Search tropes, descriptions, or categories..."
+                    autocomplete="off"
+                >
+                <div id="searchResults" class="search-results"></div>
+            </div>
+        </div>
+        
+        <!-- Content Area -->
+        <div class="content">
+            <!-- Tropes Section -->
+            <div id="tropesSection" class="section active">
+                <div id="tropesContent">
+                    <div class="loading">Loading tropes...</div>
+                </div>
+            </div>
+            
+            <!-- Categories Section -->
+            <div id="categoriesSection" class="section">
+                <div id="categoriesContent">
+                    <div class="loading">Loading categories...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
