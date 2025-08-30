@@ -1,24 +1,65 @@
-# Personal Trope Database
+# Tropes Manager
 
-A fast, private, and user-friendly local web application for managing a personal database of writing tropes, genres, and literary devices.
+A fast, private, and user-friendly local web application for managing writing tropes. Built with Flask, SQLite, and vanilla JavaScript.
 
-## 🚀 Quick Start
+## Features
+
+- 🔍 **Powerful Search**: Real-time search across tropes and categories
+- 📝 **CRUD Operations**: Create, read, update, and delete tropes
+- 🎯 **Category Management**: Organized by genre categories
+- 📱 **Responsive Design**: Works on desktop and mobile
+- 🔒 **Local Storage**: All data stays on your machine
+- ⚡ **Fast Performance**: Optimized for quick searches and navigation
+
+## Project Structure
+
+```
+Lab-8a/
+├── README.md                 # Project documentation
+├── app.py                    # Main Flask application
+├── requirements.txt          # Python dependencies
+├── data/                     # Data files
+│   └── genre_tropes_data.csv # Original CSV data
+├── db/                       # Database files
+│   └── genre_tropes.db       # SQLite database
+├── scripts/                  # Utility scripts
+│   ├── csv_to_sqlite.py      # Database import script
+│   └── start_server.sh       # Server startup script
+├── static/                   # Frontend assets
+│   ├── app.js                # JavaScript application logic
+│   └── style.css             # Styling
+├── templates/                # HTML templates
+│   └── index.html            # Main web interface
+├── tests/                    # Test suite
+│   ├── __init__.py           # Python package init
+│   ├── test_api.py           # API endpoint tests
+│   ├── test_improvements.py  # Feature tests
+│   └── run_tests.py          # Test runner
+├── mockups/                  # Design mockups
+├── archive/                  # Archived files
+└── venv/                     # Python virtual environment
+```
+
+## Quick Start
 
 ### Prerequisites
-- Python 3.7+ 
-- macOS (or any Unix-like system)
 
-### Installation & Setup
+- Python 3.8 or higher
+- pip (Python package manager)
 
-1. **Clone or navigate to the project directory:**
+### Installation
+
+1. **Clone or navigate to the project:**
    ```bash
    cd /Users/carlo/Lab-8a
    ```
 
-2. **Create and activate a virtual environment:**
+2. **Create and activate virtual environment:**
    ```bash
    python3 -m venv venv
-   source venv/bin/activate
+   source venv/bin/activate  # On macOS/Linux
+   # or
+   venv\Scripts\activate     # On Windows
    ```
 
 3. **Install dependencies:**
@@ -26,226 +67,107 @@ A fast, private, and user-friendly local web application for managing a personal
    pip install -r requirements.txt
    ```
 
-4. **Initialize the database** (one-time setup):
+4. **Initialize the database (if needed):**
    ```bash
    python scripts/csv_to_sqlite.py
    ```
 
-5. **Start the application:**
+5. **Start the server:**
    ```bash
-   ./start_server.sh
+   # Option 1: Using the startup script
+   chmod +x scripts/start_server.sh
+   ./scripts/start_server.sh
+   
+   # Option 2: Direct Python command
+   python app.py
    ```
 
-6. **Open your web browser and visit:**
-   ```
-   http://localhost:8000
-   ```
+6. **Access the application:**
+   Open your web browser and go to `http://localhost:5000`
 
-## 🎯 Current Features
+## Usage
 
-### ✅ Phase 1: Backend API (Complete)
-- **SQLite Database**: Normalized schema with 148 tropes and 23 categories
-- **REST API Endpoints**:
-  - `GET /` - Web interface
-  - `GET /api/tropes` - List all tropes with formatted categories
-  - `GET /api/tropes/{id}` - Get specific trope details
-  - `GET /api/categories` - List all categories with trope counts (formatted display names)
-  - `GET /api/categories/{id}/tropes` - Get tropes in a category
-  - `GET /api/search?q={term}` - Advanced search across tropes and categories
+### Navigation
+- **All Tropes**: View all tropes in the database
+- **Categories**: Browse tropes by category
+- **Search**: Real-time search functionality
 
-### ✅ Phase 2: Web Frontend (Complete)
-- **Clean Web Interface**: Responsive design optimized for browsing and reading
-- **Trope Browser**: Grid view of all tropes with descriptions and formatted category tags
-- **Category Browser**: Overview of all categories with proper Title Case formatting
-- **Detail Views**: Click any trope or category for detailed information
-- **Advanced Search**: Flexible, real-time search with multiple matching strategies
-- **Navigation**: Smooth transitions between different views
+### Search Features
+- Search across trope names and descriptions
+- Filter by specific categories
+- Case-insensitive matching
+- Instant results as you type
 
-### ✅ Phase 2.5: Enhanced UX (Complete)
-- **Smart Category Formatting**: 
-  - `"forced_situation"` → `"Forced Situation"`
-  - `"age_gap"` → `"Age Gap"`
-  - `"character_type"` → `"Character Type"`
-- **Flexible Search**: Find categories using any variation:
-  - Search `"forced"` finds `"Forced Situation"`
-  - Search `"Forced Situation"` works perfectly
-  - Search `"forced situation"` matches correctly
-  - Case-insensitive matching throughout
-- **Database-Optimized Search**: Fast SQL queries with intelligent ranking
-- **Real-time Results**: Search updates as you type with result counts
+### Managing Tropes
+- Add new tropes with descriptions and category assignments
+- Edit existing tropes inline
+- Delete tropes with confirmation
+- Categories are displayed in Title Case format
 
-## 🆕 Recent Improvements (August 2025)
+## Database
 
-### Enhanced Category Display
-- **Smart Formatting**: All category names now display in proper Title Case
-- **Readable Names**: Underscores automatically converted to spaces for better UX
-- **Consistent Display**: Formatted names appear everywhere (lists, tags, search results)
+The application uses SQLite with the following schema:
 
-### Advanced Search Capabilities  
-- **New Search API**: Dedicated `/api/search` endpoint with database-level optimization
-- **Flexible Matching**: Search works with any combination:
-  - Original format: `"forced_situation"`
-  - Formatted: `"Forced Situation"`  
-  - Partial: `"forced"` or `"situation"`
-  - Any case: `"FORCED"`, `"Forced"`, `"forced"`
-- **Smart Ranking**: Results prioritized by relevance (name matches first, then descriptions)
-- **Real-time Feedback**: Instant search results with detailed count breakdowns
-- **Cross-Reference Search**: Find tropes by searching their category names
+- **tropes**: Main table with trope information
+- **categories**: Genre categories
+- **trope_categories**: Many-to-many relationship table
 
-### Technical Enhancements
-- **Performance**: Database-optimized search queries for faster results
-- **Fallback Protection**: Client-side search backup if server search fails  
-- **Better Error Handling**: Graceful degradation and user feedback
-- **Enhanced API**: All endpoints now return formatted category names
+Current data includes **148 tropes** across **23 categories**.
 
-## 🔧 Current Project Structure
+## Development
 
-```
-/Users/carlo/Lab-8a/
-├── app.py                 # Flask web application
-├── requirements.txt       # Python dependencies
-├── start_server.sh       # Easy server startup script
-├── test_api.py           # API testing utilities
-├── test_improvements.py  # Test category formatting and search
-├── README.md             # This file
-├── venv/                 # Python virtual environment
-├── templates/
-│   └── index.html        # Main web interface template
-├── static/
-│   ├── style.css         # Clean, responsive CSS
-│   └── app.js           # Frontend JavaScript with advanced search
-├── db/
-│   └── genre_tropes.db   # SQLite database
-├── data/
-│   └── genre_tropes_data.csv  # Original CSV data
-└── scripts/
-    └── csv_to_sqlite.py  # Database initialization script
-```
-
-## 🖥️ Using the Application
-
-### Browse Your Tropes
-- **All Tropes**: View all 148 tropes in a clean grid layout
-- **Click any trope** to see its full description and associated categories
-- **Formatted category tags** show genres in readable Title Case format
-
-### Explore Categories  
-- **Categories view** shows all 23 writing categories with proper formatting
-- **Title Case display**: `"forced_situation"` appears as `"Forced Situation"`
-- **Click any category** to see all tropes in that genre
-- **Trope counts** help you see which categories are most populated
-
-### Advanced Search & Discovery
-- **Global search bar** with flexible matching across all content
-- **Multiple search strategies**:
-  - Search `"forced"` → finds `"Forced Situation"` category
-  - Search `"gap"` → finds `"Age Gap"` category  
-  - Search `"character"` → finds multiple character-related categories
-  - Search `"forced situation"` → matches with or without underscores
-  - Case-insensitive matching works everywhere
-- **Real-time results** update as you type with detailed counts
-- **Smart ranking**: Name matches prioritized over description matches
-- **Cross-reference search**: Find tropes by their category names
-
-### Navigation & Interface
-- **Clean navigation** between tropes and categories
-- **Back buttons** return you to previous views  
-- **Responsive design** works perfectly on desktop and mobile
-- **Fast performance**: Database-optimized queries for instant results
-
-## 🧪 Testing
-
-Run the comprehensive test suite:
+### Running Tests
 ```bash
-source venv/bin/activate
-python test_api.py
+# Run all tests
+python tests/run_tests.py
+
+# Or run specific test files
+python -m pytest tests/test_api.py
+python -m pytest tests/test_improvements.py
 ```
 
-Test the new improvements specifically:
-```bash
-source venv/bin/activate
-python test_improvements.py
-```
+### Project Phases
+- ✅ **Phase 1**: Backend API development
+- ✅ **Phase 2**: Web frontend implementation  
+- ✅ **Phase 2.5**: Enhanced UX features
+- ✅ **Phase 3**: Project organization and testing
 
-These tests will verify:
-- Database connectivity and data integrity
-- All API endpoints functionality  
-- Frontend/backend integration
-- Category name formatting
-- Advanced search capabilities
+### Development Environment
+The project uses:
+- Flask 2.3.3 for the web framework
+- Flask-CORS for cross-origin requests
+- SQLite for data storage
+- Vanilla JavaScript for frontend interactivity
+- Responsive CSS Grid for layout
 
-## 📊 Database Schema
+## API Endpoints
 
-The application uses a normalized SQLite database:
+- `GET /api/tropes` - Get all tropes
+- `GET /api/categories` - Get all categories
+- `GET /api/search?q=<query>&category=<category>` - Search tropes
+- `POST /api/tropes` - Create new trope
+- `PUT /api/tropes/<id>` - Update trope
+- `DELETE /api/tropes/<id>` - Delete trope
 
-- **tropes**: Core trope data (id, name, description)
-- **categories**: Genre/category definitions (id, name)  
-- **trope_categories**: Many-to-many relationships between tropes and categories
+## Contributing
 
-## 🔜 Next Steps (Planned)
+1. Follow the existing code style
+2. Add tests for new features
+3. Update documentation as needed
+4. Test thoroughly before committing
 
-### Phase 3: CRUD Operations  
-- Add/edit/delete tropes via web interface
-- Category management and creation
-- Form validation and error handling
-- Bulk operations for efficiency
+## Mission
 
-### Phase 4: Works & Examples
-- Add "Works" table (books, movies, TV shows)
-- Link tropes to specific works with examples
-- Cross-reference tropes across different media
-- Media type categorization
+From the project mission statement: *"Build a fast, private, and user-friendly local web application for managing personal writing tropes database, with a clean web interface for CRUD operations and powerful searching capabilities."*
 
-### Phase 5: Advanced Features
-- Export/import functionality (CSV, JSON)
-- Advanced filtering options
-- Search result highlighting
-- User preferences and settings
+## Technical Notes
 
-### Phase 6: Containerization
-- Docker setup for easy deployment
-- docker-compose.yml for one-command startup
-- Production-ready configuration
-- Automated backup solutions
-
-## 🛠️ Development
-
-### Starting Development Server
-```bash
-cd /Users/carlo/Lab-8a
-source venv/bin/activate
-python app.py
-```
-
-The server runs in debug mode and automatically reloads when you make changes.
-
-### API Endpoints Reference
-
-| Endpoint | Method | Description |
-|----------|---------|-------------|
-| `/` | GET | Main web interface |
-| `/api/tropes` | GET | List all tropes with formatted categories |
-| `/api/tropes/{id}` | GET | Get specific trope details with formatted categories |
-| `/api/categories` | GET | List all categories with formatted display names |
-| `/api/categories/{id}/tropes` | GET | Get tropes in category with formatted names |
-| `/api/search?q={term}` | GET | Advanced search across tropes and categories |
-
-### Making Changes
-
-The application uses:
-- **Flask** for the web framework
-- **SQLite** for the database
-- **Vanilla JavaScript** for frontend interactivity
-- **CSS Grid/Flexbox** for responsive layout
-
-## 🎨 Design Philosophy
-
-This application prioritizes:
-- **Function over form**: Clean, fast, and practical
-- **Single-user focus**: Personal tool, not public website
-- **Minimal dependencies**: Easy to run and maintain
-- **Progressive enhancement**: Works without JavaScript for basic functionality
+- Categories display with underscores replaced by spaces and Title Case formatting
+- Search is optimized with both client-side and server-side filtering
+- All operations are local - no external API calls
+- Responsive design works on various screen sizes
+- Git repository included for version control
 
 ---
 
-*Built for creative writers who want a fast, private way to explore and organize literary tropes and story devices.*
+Last updated: January 2025

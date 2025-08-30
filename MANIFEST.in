@@ -1,0 +1,36 @@
+# Include important documentation and configuration files
+include README.md
+include LICENSE
+include requirements.txt
+include pyproject.toml
+include setup.py
+
+# Include application files
+include app.py
+include *.py
+
+# Include web assets
+recursive-include static *
+recursive-include templates *
+
+# Include data and database files
+recursive-include data *.csv
+recursive-include db *.db
+
+# Include scripts
+recursive-include scripts *.py *.sh
+
+# Include test files
+recursive-include tests *.py
+
+# Exclude development and cache files
+global-exclude __pycache__
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude *.orig
+global-exclude *.rej
+global-exclude .git*
+global-exclude .DS_Store
+recursive-exclude venv *
+recursive-exclude archive *
+recursive-exclude mockups *

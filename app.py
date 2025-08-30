@@ -302,7 +302,8 @@ def search():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-if __name__ == '__main__':
+def main():
+    """Main entry point for the application."""
     # Check if database exists
     if not os.path.exists(DB_PATH):
         print(f"Database not found at {DB_PATH}")
@@ -311,3 +312,6 @@ if __name__ == '__main__':
     
     print(f"Starting Flask app with database at: {DB_PATH}")
     app.run(debug=True, host='0.0.0.0', port=8000)
+
+if __name__ == '__main__':
+    main()
