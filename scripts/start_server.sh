@@ -1,7 +1,9 @@
 #!/bin/bash
 
 # Script to start the Flask development server
-cd "$(dirname "$0")"
+# Get the project root directory (parent of scripts directory)
+PROJECT_ROOT="$(dirname "$(dirname "$0")")"
+cd "$PROJECT_ROOT"
 
 # Activate virtual environment
 source venv/bin/activate
