@@ -93,7 +93,7 @@
                         </div>
                         
                         <div class="form-actions">
-                            <button type="button" class="btn btn-secondary" onclick="tropeApp.showSection('tropes')">
+                            <button type="button" class="btn btn-secondary" onclick="app.showSection('tropes')">
                                 Cancel
                             </button>
                             <button type="submit" class="btn btn-primary">
@@ -104,6 +104,64 @@
                     
                     <div id="createFeedback" class="feedback" style="display: none;"></div>
                 </div>
+            </div>
+        </div>
+        
+        <!-- Edit Trope Section -->
+        <div id="editSection" class="section">
+            <div class="create-form-container">
+                <h2 class="form-title">Edit Trope</h2>
+                
+                <form id="editTropeForm" novalidate>
+                    <input type="hidden" id="editTropeId" name="tropeId">
+                    
+                    <div class="form-group">
+                        <label for="editTropeName">Name *</label>
+                        <input 
+                            type="text" 
+                            id="editTropeName" 
+                            name="name" 
+                            required 
+                            minlength="2" 
+                            maxlength="200"
+                            placeholder="Enter trope name..."
+                        >
+                        <span class="field-help">2-200 characters</span>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editTropeDescription">Description *</label>
+                        <textarea 
+                            id="editTropeDescription" 
+                            name="description" 
+                            required 
+                            minlength="10" 
+                            maxlength="2000"
+                            rows="4"
+                            placeholder="Describe the trope in detail..."
+                        ></textarea>
+                        <span class="field-help">10-2000 characters</span>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Categories (Optional)</label>
+                        <div id="editCategorySelection" class="category-selection">
+                            <div class="text-muted">Loading categories...</div>
+                        </div>
+                        <span class="field-help">Select relevant categories for this trope</span>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="app.showSection('tropes')">
+                            Cancel
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            Update Trope
+                        </button>
+                    </div>
+                </form>
+                
+                <div id="editFeedback" class="feedback" style="display: none;"></div>
             </div>
         </div>
     </div>

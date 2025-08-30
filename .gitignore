@@ -1,6 +1,7 @@
 # Project specific
 archive/
 mockups/
+memory/
 
 # Environment variables
 .env.local

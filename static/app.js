@@ -109,6 +109,9 @@ class TropeApp {
                 case 'create':
                     this.renderCreateForm();
                     break;
+                case 'edit':
+                    // Edit form is handled by editTrope method
+                    break;
             }
         } catch (error) {
             console.error('Error in showSection:', error);
@@ -126,13 +129,23 @@ class TropeApp {
         const html = `
             <div class="items-grid">
                 ${this.filteredData.tropes.map(trope => `
-                    <div class="item-card" onclick="app.showTropeDetail('${trope.id}')">
-                        <div class="item-title">${this.escapeHtml(trope.name)}</div>
-                        <div class="item-description">
-                            ${this.escapeHtml(trope.description || '').substring(0, 150)}${trope.description && trope.description.length > 150 ? '...' : ''}
+                    <div class="item-card">
+                        <div class="item-content" onclick="app.showTropeDetail('${trope.id}')">
+                            <div class="item-title">${this.escapeHtml(trope.name)}</div>
+                            <div class="item-description">
+                                ${this.escapeHtml(trope.description || '').substring(0, 150)}${trope.description && trope.description.length > 150 ? '...' : ''}
+                            </div>
+                            <div class="item-meta">
+                                ${trope.categories.map(cat => `<span class="tag category">${this.escapeHtml(cat)}</span>`).join('')}
+                            </div>
                         </div>
-                        <div class="item-meta">
-                            ${trope.categories.map(cat => `<span class="tag category">${this.escapeHtml(cat)}</span>`).join('')}
+                        <div class="item-actions">
+                            <button class="action-btn action-edit" onclick="app.editTrope('${trope.id}'); event.stopPropagation();" aria-label="Edit trope">
+                                ✏️
+                            </button>
+                            <button class="action-btn action-delete" onclick="app.deleteTrope('${trope.id}'); event.stopPropagation();" aria-label="Delete trope">
+                                🗑️
+                            </button>
                         </div>
                     </div>
                 `).join('')}
@@ -481,6 +494,181 @@ class TropeApp {
         element.textContent = message;
         element.className = `feedback ${type}`;
         element.style.display = 'block';
+    }
+    
+    async editTrope(tropeId) {
+        try {
+            // Fetch the trope data
+            const response = await fetch(`/api/tropes/${tropeId}`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch trope data');
+            }
+            
+            const trope = await response.json();
+            
+            // Populate the edit form
+            document.getElementById('editTropeId').value = trope.id;
+            document.getElementById('editTropeName').value = trope.name;
+            document.getElementById('editTropeDescription').value = trope.description;
+            
+            // Load categories and select current ones
+            this.loadCategoriesIntoEditForm(trope.categories);
+            
+            // Setup form submission handler
+            const form = document.getElementById('editTropeForm');
+            if (form) {
+                form.onsubmit = this.handleEditSubmit.bind(this);
+            }
+            
+            // Show edit section
+            this.showSection('edit');
+            
+        } catch (error) {
+            console.error('Error loading trope for editing:', error);
+            alert('Failed to load trope data for editing');
+        }
+    }
+    
+    loadCategoriesIntoEditForm(selectedCategories = []) {
+        const container = document.getElementById('editCategorySelection');
+        if (!container) {
+            console.error('Edit category selection container not found');
+            return;
+        }
+        
+        if (!this.data.categories || this.data.categories.length === 0) {
+            container.innerHTML = '<div class="text-muted">Loading categories...</div>';
+            return;
+        }
+        
+        // Get selected category IDs for checking
+        const selectedCategoryIds = selectedCategories.map(cat => cat.id);
+        
+        const html = this.data.categories.map(category => {
+            const isSelected = selectedCategoryIds.includes(category.id);
+            return `
+                <div class="category-checkbox">
+                    <input type="checkbox" 
+                           id="edit-cat-${category.id}" 
+                           value="${category.display_name}" 
+                           name="categories"
+                           ${isSelected ? 'checked' : ''}>
+                    <label for="edit-cat-${category.id}">${this.escapeHtml(category.display_name)}</label>
+                </div>
+            `;
+        }).join('');
+        
+        container.innerHTML = html;
+    }
+    
+    async handleEditSubmit(event) {
+        event.preventDefault();
+        
+        const form = event.target;
+        const feedback = document.getElementById('editFeedback');
+        const submitButton = form.querySelector('button[type="submit"]');
+        
+        // Get form data
+        const formData = new FormData(form);
+        const tropeId = formData.get('tropeId');
+        const name = formData.get('name').trim();
+        const description = formData.get('description').trim();
+        
+        // Get selected categories
+        const selectedCategories = Array.from(form.querySelectorAll('input[name="categories"]:checked'))
+            .map(checkbox => checkbox.value);
+        
+        // Validate
+        const validation = this.validateCreateForm(name, description);
+        if (!validation.valid) {
+            this.showFeedback(feedback, validation.message, 'error');
+            return;
+        }
+        
+        // Show loading
+        submitButton.disabled = true;
+        submitButton.textContent = 'Updating...';
+        this.showFeedback(feedback, 'Updating trope...', 'loading');
+        
+        try {
+            const response = await fetch(`/api/tropes/${tropeId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: name,
+                    description: description,
+                    categories: selectedCategories
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                // Success!
+                this.showFeedback(feedback, `Trope "${name}" updated successfully!`, 'success');
+                
+                // Reload data to include updated trope
+                await this.loadData();
+                
+                // Show success message for a bit, then switch to tropes view
+                setTimeout(() => {
+                    this.showSection('tropes');
+                }, 2000);
+                
+            } else {
+                // Server error
+                this.showFeedback(feedback, result.error || 'Failed to update trope', 'error');
+            }
+            
+        } catch (error) {
+            console.error('Error updating trope:', error);
+            this.showFeedback(feedback, 'Network error. Please check your connection.', 'error');
+        } finally {
+            // Reset button
+            submitButton.disabled = false;
+            submitButton.textContent = 'Update Trope';
+        }
+    }
+    
+    async deleteTrope(tropeId) {
+        try {
+            // Get trope name for confirmation
+            const response = await fetch(`/api/tropes/${tropeId}`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch trope data');
+            }
+            
+            const trope = await response.json();
+            
+            // Confirm deletion
+            const confirmed = confirm(`Are you sure you want to delete the trope "${trope.name}"?\n\nThis action cannot be undone.`);
+            
+            if (!confirmed) {
+                return;
+            }
+            
+            // Delete the trope
+            const deleteResponse = await fetch(`/api/tropes/${tropeId}`, {
+                method: 'DELETE'
+            });
+            
+            const result = await deleteResponse.json();
+            
+            if (deleteResponse.ok) {
+                // Success! Reload data and show message
+                await this.loadData();
+                alert(`Trope "${trope.name}" has been deleted successfully.`);
+            } else {
+                // Error
+                alert(`Failed to delete trope: ${result.error || 'Unknown error'}`);
+            }
+            
+        } catch (error) {
+            console.error('Error deleting trope:', error);
+            alert('Failed to delete trope. Please check your connection.');
+        }
     }
 }
 
