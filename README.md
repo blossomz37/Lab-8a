@@ -149,6 +149,10 @@ The project uses:
 - `PUT /api/tropes/<id>` - Update trope
 - `DELETE /api/tropes/<id>` - Delete trope
 
+## Version History
+
+See [CHANGELOG.md](CHANGELOG.md) for detailed version history and release notes.
+
 ## Contributing
 
 1. Follow the existing code style

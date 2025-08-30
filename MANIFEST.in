@@ -1,5 +1,6 @@
 # Include important documentation and configuration files
 include README.md
+include CHANGELOG.md
 include LICENSE
 include requirements.txt
 include pyproject.toml

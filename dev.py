@@ -174,6 +174,22 @@ def show_status():
         else:
             print(f"   ❌ {dir_name}/")
 
+def view_changelog():
+    """Display the project changelog."""
+    changelog_path = PROJECT_ROOT / "CHANGELOG.md"
+    if changelog_path.exists():
+        print("📋 Tropes Manager - Changelog")
+        print("=" * 50)
+        with open(changelog_path, 'r') as f:
+            # Show first 50 lines to avoid overwhelming output
+            lines = f.readlines()[:50]
+            print(''.join(lines))
+        if len(lines) >= 50:
+            print("\n... (showing first 50 lines)")
+            print(f"View full changelog: cat {changelog_path}")
+    else:
+        print("❌ CHANGELOG.md not found")
+
 def main():
     """Main development script entry point."""
     parser = argparse.ArgumentParser(description="Tropes Manager Development Helper")
@@ -198,6 +214,9 @@ def main():
     # Show status
     subparsers.add_parser('status', help='Show project status')
     
+    # View changelog
+    subparsers.add_parser('changelog', help='View project changelog')
+    
     args = parser.parse_args()
     
     if args.command == 'setup-db':
@@ -212,6 +231,8 @@ def main():
         clean_project()
     elif args.command == 'status':
         show_status()
+    elif args.command == 'changelog':
+        view_changelog()
     else:
         parser.print_help()
 

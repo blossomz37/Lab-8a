@@ -1,7 +1,7 @@
 # Makefile for Tropes Manager
 # Provides convenient commands for development tasks
 
-.PHONY: help setup start test clean deps status install build
+.PHONY: help setup start test clean deps status changelog install build
 
 # Default target
 help:
@@ -13,6 +13,7 @@ help:
 	@echo "  make clean     - Clean generated files and caches"
 	@echo "  make deps      - Check dependencies"
 	@echo "  make status    - Show project status"
+	@echo "  make changelog - View project changelog"
 	@echo "  make install   - Install the package in development mode"
 	@echo "  make build     - Build distribution packages"
 	@echo ""
@@ -49,6 +50,10 @@ deps:
 # Show status
 status:
 	@python dev.py status
+
+# View changelog
+changelog:
+	@python dev.py changelog
 
 # Install in development mode
 install:
