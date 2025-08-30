@@ -764,6 +764,321 @@ def export_csv():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# ======================
+# WORKS API ENDPOINTS
+# ======================
+
+@app.route('/api/works')
+def get_works():
+    """Get all works with optional filtering and sorting"""
+    try:
+        conn = get_db_connection()
+        
+        # Get query parameters
+        search = request.args.get('search', '').strip()
+        work_type = request.args.get('type', '').strip()
+        sort_by = request.args.get('sort', 'title')  # title, year, author, type
+        sort_order = request.args.get('order', 'asc')  # asc or desc
+        
+        # Build base query
+        query = "SELECT * FROM works WHERE 1=1"
+        params = []
+        
+        # Add search filter
+        if search:
+            query += " AND (title LIKE ? OR author LIKE ? OR description LIKE ?)"
+            search_term = f"%{search}%"
+            params.extend([search_term, search_term, search_term])
+        
+        # Add type filter
+        if work_type and work_type != 'all':
+            query += " AND type = ?"
+            params.append(work_type)
+        
+        # Add sorting
+        valid_sort_fields = ['title', 'year', 'author', 'type', 'created_at']
+        if sort_by not in valid_sort_fields:
+            sort_by = 'title'
+        
+        sort_direction = 'DESC' if sort_order.lower() == 'desc' else 'ASC'
+        query += f" ORDER BY {sort_by} {sort_direction}"
+        
+        works = conn.execute(query, params).fetchall()
+        
+        # Convert to list of dictionaries
+        works_list = [dict_from_row(work) for work in works]
+        
+        # Get total count for metadata
+        count_query = "SELECT COUNT(*) as total FROM works WHERE 1=1"
+        count_params = []
+        
+        if search:
+            count_query += " AND (title LIKE ? OR author LIKE ? OR description LIKE ?)"
+            search_term = f"%{search}%"
+            count_params.extend([search_term, search_term, search_term])
+        
+        if work_type and work_type != 'all':
+            count_query += " AND type = ?"
+            count_params.append(work_type)
+            
+        total_count = conn.execute(count_query, count_params).fetchone()['total']
+        
+        conn.close()
+        
+        return jsonify({
+            "works": works_list,
+            "total": total_count,
+            "filters": {
+                "search": search,
+                "type": work_type
+            },
+            "sorting": {
+                "sort_by": sort_by,
+                "sort_order": sort_order
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/works', methods=['POST'])
+def create_work():
+    """Create a new work"""
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        if not data or not data.get('title') or not data.get('type'):
+            return jsonify({"error": "Title and type are required"}), 400
+        
+        title = data.get('title', '').strip()
+        work_type = data.get('type', '').strip()
+        year = data.get('year')
+        author = data.get('author', '').strip()
+        description = data.get('description', '').strip()
+        
+        # Validate title length
+        if len(title) < 1 or len(title) > 200:
+            return jsonify({"error": "Title must be between 1 and 200 characters"}), 400
+        
+        # Validate type
+        valid_types = ['Novel', 'Film', 'TV Show', 'Short Story', 'Comic', 'Game', 'Other']
+        if work_type not in valid_types:
+            return jsonify({"error": f"Type must be one of: {', '.join(valid_types)}"}), 400
+        
+        # Validate year if provided
+        if year is not None:
+            try:
+                year = int(year)
+                if year < 1000 or year > 2100:
+                    return jsonify({"error": "Year must be between 1000 and 2100"}), 400
+            except (ValueError, TypeError):
+                return jsonify({"error": "Year must be a valid number"}), 400
+        
+        # Validate author length
+        if author and len(author) > 100:
+            return jsonify({"error": "Author must be 100 characters or less"}), 400
+        
+        # Validate description length
+        if description and len(description) > 2000:
+            return jsonify({"error": "Description must be 2000 characters or less"}), 400
+        
+        # Generate UUID and timestamps
+        work_id = str(uuid.uuid4())
+        timestamp = datetime.now().isoformat()
+        
+        # Insert into database
+        conn = get_db_connection()
+        
+        # Check for duplicate title
+        existing = conn.execute("SELECT id FROM works WHERE title = ?", (title,)).fetchone()
+        if existing:
+            conn.close()
+            return jsonify({"error": "A work with this title already exists"}), 400
+        
+        conn.execute("""
+            INSERT INTO works (id, title, type, year, author, description, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (work_id, title, work_type, year, author, description, timestamp, timestamp))
+        
+        conn.commit()
+        
+        # Fetch the created work
+        new_work = conn.execute("SELECT * FROM works WHERE id = ?", (work_id,)).fetchone()
+        conn.close()
+        
+        return jsonify({
+            "message": "Work created successfully",
+            "work": dict_from_row(new_work)
+        }), 201
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/works/<work_id>')
+def get_work(work_id):
+    """Get a specific work by ID with related tropes"""
+    try:
+        conn = get_db_connection()
+        
+        # Get the work
+        work = conn.execute("SELECT * FROM works WHERE id = ?", (work_id,)).fetchone()
+        
+        if not work:
+            conn.close()
+            return jsonify({"error": "Work not found"}), 404
+        
+        # Get related tropes through examples
+        examples_query = """
+        SELECT 
+            e.id as example_id,
+            e.description as example_description,
+            e.page_reference,
+            t.id as trope_id,
+            t.name as trope_name,
+            t.description as trope_description
+        FROM examples e
+        JOIN tropes t ON e.trope_id = t.id
+        WHERE e.work_id = ?
+        ORDER BY t.name
+        """
+        
+        examples = conn.execute(examples_query, (work_id,)).fetchall()
+        
+        conn.close()
+        
+        # Format response
+        work_data = dict_from_row(work)
+        work_data['examples'] = [dict_from_row(example) for example in examples]
+        work_data['trope_count'] = len(examples)
+        
+        return jsonify(work_data)
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/works/<work_id>', methods=['PUT'])
+def update_work(work_id):
+    """Update an existing work"""
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+        
+        conn = get_db_connection()
+        
+        # Check if work exists
+        existing_work = conn.execute("SELECT * FROM works WHERE id = ?", (work_id,)).fetchone()
+        if not existing_work:
+            conn.close()
+            return jsonify({"error": "Work not found"}), 404
+        
+        # Get current values as defaults
+        current = dict_from_row(existing_work)
+        
+        title = data.get('title', current['title']).strip()
+        work_type = data.get('type', current['type']).strip()
+        year = data.get('year', current['year'])
+        author = data.get('author', current['author'] or '').strip()
+        description = data.get('description', current['description'] or '').strip()
+        
+        # Validate title
+        if len(title) < 1 or len(title) > 200:
+            conn.close()
+            return jsonify({"error": "Title must be between 1 and 200 characters"}), 400
+        
+        # Validate type
+        valid_types = ['Novel', 'Film', 'TV Show', 'Short Story', 'Comic', 'Game', 'Other']
+        if work_type not in valid_types:
+            conn.close()
+            return jsonify({"error": f"Type must be one of: {', '.join(valid_types)}"}), 400
+        
+        # Validate year if provided
+        if year is not None:
+            try:
+                year = int(year)
+                if year < 1000 or year > 2100:
+                    conn.close()
+                    return jsonify({"error": "Year must be between 1000 and 2100"}), 400
+            except (ValueError, TypeError):
+                conn.close()
+                return jsonify({"error": "Year must be a valid number"}), 400
+        
+        # Validate lengths
+        if author and len(author) > 100:
+            conn.close()
+            return jsonify({"error": "Author must be 100 characters or less"}), 400
+        
+        if description and len(description) > 2000:
+            conn.close()
+            return jsonify({"error": "Description must be 2000 characters or less"}), 400
+        
+        # Check for duplicate title (excluding current work)
+        duplicate_check = conn.execute(
+            "SELECT id FROM works WHERE title = ? AND id != ?", 
+            (title, work_id)
+        ).fetchone()
+        
+        if duplicate_check:
+            conn.close()
+            return jsonify({"error": "A work with this title already exists"}), 400
+        
+        # Update the work
+        timestamp = datetime.now().isoformat()
+        
+        conn.execute("""
+            UPDATE works 
+            SET title = ?, type = ?, year = ?, author = ?, description = ?, updated_at = ?
+            WHERE id = ?
+        """, (title, work_type, year, author, description, timestamp, work_id))
+        
+        conn.commit()
+        
+        # Fetch updated work
+        updated_work = conn.execute("SELECT * FROM works WHERE id = ?", (work_id,)).fetchone()
+        conn.close()
+        
+        return jsonify({
+            "message": "Work updated successfully",
+            "work": dict_from_row(updated_work)
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/works/<work_id>', methods=['DELETE'])
+def delete_work(work_id):
+    """Delete a work and all its examples"""
+    try:
+        conn = get_db_connection()
+        
+        # Check if work exists
+        work = conn.execute("SELECT * FROM works WHERE id = ?", (work_id,)).fetchone()
+        if not work:
+            conn.close()
+            return jsonify({"error": "Work not found"}), 404
+        
+        # Get count of examples that will be deleted
+        example_count = conn.execute(
+            "SELECT COUNT(*) as count FROM examples WHERE work_id = ?", 
+            (work_id,)
+        ).fetchone()['count']
+        
+        # Delete the work (examples will be deleted automatically due to CASCADE)
+        conn.execute("DELETE FROM works WHERE id = ?", (work_id,))
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            "message": "Work deleted successfully",
+            "deleted_work": dict_from_row(work),
+            "deleted_examples": example_count
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 def main():
     """Main entry point for the application."""
     # Check if database exists
