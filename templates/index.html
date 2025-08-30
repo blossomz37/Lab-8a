@@ -18,6 +18,7 @@
         <div class="nav">
             <button data-section="tropes" class="active">All Tropes</button>
             <button data-section="categories">Categories</button>
+            <button data-section="create" class="create-button">+ Create Trope</button>
         </div>
         
         <!-- Search Section -->
@@ -47,6 +48,61 @@
             <div id="categoriesSection" class="section">
                 <div id="categoriesContent">
                     <div class="loading">Loading categories...</div>
+                </div>
+            </div>
+            
+            <!-- Create Trope Section -->
+            <div id="createSection" class="section">
+                <div class="create-form-container">
+                    <h2>Create New Trope</h2>
+                    <form id="createTropeForm" class="create-form">
+                        <div class="form-group">
+                            <label for="tropeName">Name *</label>
+                            <input 
+                                type="text" 
+                                id="tropeName" 
+                                name="name" 
+                                required 
+                                minlength="2" 
+                                maxlength="200"
+                                placeholder="Enter trope name..."
+                            >
+                            <span class="field-help">2-200 characters</span>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="tropeDescription">Description *</label>
+                            <textarea 
+                                id="tropeDescription" 
+                                name="description" 
+                                required 
+                                minlength="10" 
+                                maxlength="2000"
+                                rows="4"
+                                placeholder="Describe the trope in detail..."
+                            ></textarea>
+                            <span class="field-help">10-2000 characters</span>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="tropeCategories">Categories</label>
+                            <div id="categorySelection" class="category-selection">
+                                <div class="loading">Loading categories...</div>
+                            </div>
+                            <span class="field-help">Select one or more categories</span>
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-secondary" onclick="tropeApp.showSection('tropes')">
+                                Cancel
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                Create Trope
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <div id="createFeedback" class="feedback" style="display: none;"></div>
                 </div>
             </div>
         </div>

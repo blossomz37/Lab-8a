@@ -75,33 +75,43 @@ class TropeApp {
         }
     }
     
-    showSection(sectionName) {
-        // Update navigation
-        document.querySelectorAll('.nav button').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        document.querySelector(`[data-section="${sectionName}"]`).classList.add('active');
-        
-        // Update content
-        document.querySelectorAll('.section').forEach(section => {
-            section.classList.remove('active');
-        });
-        
-        const sectionElement = document.getElementById(`${sectionName}Section`);
-        if (sectionElement) {
-            sectionElement.classList.add('active');
-        }
-        
-        this.currentView = sectionName;
-        
-        // Render appropriate content
-        switch (sectionName) {
-            case 'tropes':
-                this.renderTropes();
-                break;
-            case 'categories':
-                this.renderCategories();
-                break;
+    showSection(section) {
+        try {
+            // Hide all sections
+            document.querySelectorAll('.section').forEach(s => s.style.display = 'none');
+            
+            // Show requested section
+            const targetSection = document.getElementById(section + 'Section');
+            if (targetSection) {
+                targetSection.style.display = 'block';
+            } else {
+                console.error(`Section ${section}Section not found`);
+                return;
+            }
+            
+            // Update active navigation - remove active class from all nav buttons
+            document.querySelectorAll('.nav button').forEach(btn => btn.classList.remove('active'));
+            
+            // Add active class to the current section button
+            const activeButton = document.querySelector(`.nav button[data-section="${section}"]`);
+            if (activeButton) {
+                activeButton.classList.add('active');
+            }
+            
+            // Handle section-specific logic
+            switch (section) {
+                case 'tropes':
+                    this.renderTropes();
+                    break;
+                case 'categories':
+                    this.renderCategories();
+                    break;
+                case 'create':
+                    this.renderCreateForm();
+                    break;
+            }
+        } catch (error) {
+            console.error('Error in showSection:', error);
         }
     }
     
@@ -335,6 +345,142 @@ class TropeApp {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+    
+    renderCreateForm() {
+        try {
+            // Load categories into the form
+            this.loadCategoriesIntoForm();
+            
+            // Setup form submission handler
+            const form = document.getElementById('createTropeForm');
+            if (form) {
+                form.onsubmit = this.handleCreateSubmit.bind(this);
+            } else {
+                console.error('Create form not found');
+            }
+        } catch (error) {
+            console.error('Error in renderCreateForm:', error);
+        }
+    }
+    
+    loadCategoriesIntoForm() {
+        const container = document.getElementById('categorySelection');
+        if (!container) {
+            console.error('Category selection container not found');
+            return;
+        }
+        
+        if (!this.data.categories || this.data.categories.length === 0) {
+            container.innerHTML = '<div class="text-muted">Loading categories...</div>';
+            return;
+        }
+        
+        const html = this.data.categories.map(category => `
+            <div class="category-checkbox">
+                <input type="checkbox" id="cat-${category.id}" value="${category.display_name}" name="categories">
+                <label for="cat-${category.id}">${this.escapeHtml(category.display_name)}</label>
+            </div>
+        `).join('');
+        
+        container.innerHTML = html;
+    }
+    
+    async handleCreateSubmit(event) {
+        event.preventDefault();
+        
+        const form = event.target;
+        const feedback = document.getElementById('createFeedback');
+        const submitButton = form.querySelector('button[type="submit"]');
+        
+        // Get form data
+        const formData = new FormData(form);
+        const name = formData.get('name').trim();
+        const description = formData.get('description').trim();
+        
+        // Get selected categories
+        const selectedCategories = Array.from(form.querySelectorAll('input[name="categories"]:checked'))
+            .map(checkbox => checkbox.value);
+        
+        // Validate
+        const validation = this.validateCreateForm(name, description);
+        if (!validation.valid) {
+            this.showFeedback(feedback, validation.message, 'error');
+            return;
+        }
+        
+        // Show loading
+        submitButton.disabled = true;
+        submitButton.textContent = 'Creating...';
+        this.showFeedback(feedback, 'Creating trope...', 'loading');
+        
+        try {
+            const response = await fetch('/api/tropes', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: name,
+                    description: description,
+                    categories: selectedCategories
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                // Success!
+                this.showFeedback(feedback, `Trope "${name}" created successfully!`, 'success');
+                
+                // Reset form
+                form.reset();
+                
+                // Reload data to include new trope
+                await this.loadData();
+                
+                // Show success message for a bit, then switch to tropes view
+                setTimeout(() => {
+                    this.showSection('tropes');
+                }, 2000);
+                
+            } else {
+                // Server error
+                this.showFeedback(feedback, result.error || 'Failed to create trope', 'error');
+            }
+            
+        } catch (error) {
+            console.error('Error creating trope:', error);
+            this.showFeedback(feedback, 'Network error. Please check your connection.', 'error');
+        } finally {
+            // Reset button
+            submitButton.disabled = false;
+            submitButton.textContent = 'Create Trope';
+        }
+    }
+    
+    validateCreateForm(name, description) {
+        if (!name || name.length < 2) {
+            return { valid: false, message: 'Name must be at least 2 characters long.' };
+        }
+        if (name.length > 200) {
+            return { valid: false, message: 'Name must be less than 200 characters.' };
+        }
+        if (!description || description.length < 10) {
+            return { valid: false, message: 'Description must be at least 10 characters long.' };
+        }
+        if (description.length > 2000) {
+            return { valid: false, message: 'Description must be less than 2000 characters.' };
+        }
+        return { valid: true };
+    }
+    
+    showFeedback(element, message, type) {
+        if (!element) return;
+        
+        element.textContent = message;
+        element.className = `feedback ${type}`;
+        element.style.display = 'block';
     }
 }
 
