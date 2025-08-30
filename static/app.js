@@ -5,11 +5,15 @@ class TropeApp {
         this.currentView = 'tropes';
         this.data = {
             tropes: [],
-            categories: []
+            categories: [],
+            works: [],
+            examples: []
         };
         this.filteredData = {
             tropes: [],
-            categories: []
+            categories: [],
+            works: [],
+            examples: []
         };
         
         this.init();
@@ -181,11 +185,23 @@ class TropeApp {
                 case 'categories':
                     this.renderCategories();
                     break;
+                case 'works':
+                    this.renderWorks();
+                    break;
+                case 'examples':
+                    this.renderExamples();
+                    break;
                 case 'analytics':
                     this.renderAnalytics();
                     break;
                 case 'create':
                     this.renderCreateForm();
+                    break;
+                case 'createWork':
+                    this.renderCreateWorkForm();
+                    break;
+                case 'createExample':
+                    this.renderCreateExampleForm();
                     break;
                 case 'edit':
                     // Edit form is handled by editTrope method
@@ -849,6 +865,369 @@ class TropeApp {
         } catch (error) {
             console.error('Error deleting trope:', error);
             alert('Failed to delete trope. Please check your connection.');
+        }
+    }
+
+    // Render Works section
+    renderWorks() {
+        const worksGrid = document.getElementById('works-grid');
+        const worksCount = document.getElementById('works-count');
+        
+        if (!worksGrid || !worksCount) return;
+
+        worksCount.textContent = `${this.data.works.length} work${this.data.works.length === 1 ? '' : 's'}`;
+
+        if (this.data.works.length === 0) {
+            worksGrid.innerHTML = '<div class="no-data">No works found. Create your first work to get started!</div>';
+            return;
+        }
+
+        worksGrid.innerHTML = this.data.works.map(work => `
+            <div class="card work-card" data-work-id="${work.id}">
+                <div class="card-header">
+                    <h3 class="work-title">${this.escapeHtml(work.title)}</h3>
+                    <div class="card-actions">
+                        <button class="btn btn-small" onclick="app.editWork(${work.id})">✏️ Edit</button>
+                        <button class="btn btn-danger btn-small" onclick="app.deleteWork(${work.id})">🗑️ Delete</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <p class="work-description">${this.escapeHtml(work.description || 'No description provided.')}</p>
+                    <div class="work-metadata">
+                        <span class="work-type">${this.escapeHtml(work.type)}</span>
+                        ${work.genre ? `<span class="work-genre">${this.escapeHtml(work.genre)}</span>` : ''}
+                        ${work.status ? `<span class="work-status">${this.escapeHtml(work.status)}</span>` : ''}
+                    </div>
+                    <div class="examples-count">
+                        ${this.data.examples.filter(ex => ex.work_id === work.id).length} trope examples
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // Render Examples section
+    renderExamples() {
+        const examplesGrid = document.getElementById('examples-grid');
+        const examplesCount = document.getElementById('examples-count');
+        
+        if (!examplesGrid || !examplesCount) return;
+
+        examplesCount.textContent = `${this.data.examples.length} example${this.data.examples.length === 1 ? '' : 's'}`;
+
+        if (this.data.examples.length === 0) {
+            examplesGrid.innerHTML = '<div class="no-data">No examples found. Create your first trope-work connection!</div>';
+            return;
+        }
+
+        examplesGrid.innerHTML = this.data.examples.map(example => {
+            const trope = this.data.tropes.find(t => t.id === example.trope_id);
+            const work = this.data.works.find(w => w.id === example.work_id);
+            
+            return `
+                <div class="card example-card" data-example-id="${example.id}">
+                    <div class="card-header">
+                        <div class="example-connection">
+                            <span class="trope-name">${this.escapeHtml(trope ? trope.name : 'Unknown Trope')}</span>
+                            <span class="connection-arrow">→</span>
+                            <span class="work-name">${this.escapeHtml(work ? work.title : 'Unknown Work')}</span>
+                        </div>
+                        <div class="card-actions">
+                            <button class="btn btn-small" onclick="app.editExample(${example.id})">✏️ Edit</button>
+                            <button class="btn btn-danger btn-small" onclick="app.deleteExample(${example.id})">🗑️ Delete</button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <p class="example-description">${this.escapeHtml(example.description || 'No description provided.')}</p>
+                        ${example.chapter_reference ? `<div class="chapter-reference">Chapter: ${this.escapeHtml(example.chapter_reference)}</div>` : ''}
+                        ${example.notes ? `<div class="example-notes">Notes: ${this.escapeHtml(example.notes)}</div>` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // Render Create Work Form
+    renderCreateWorkForm() {
+        document.getElementById('content').innerHTML = `
+            <div class="section-header">
+                <h1>Create New Work</h1>
+                <button class="btn btn-secondary" onclick="app.showSection('works')">← Back to Works</button>
+            </div>
+            
+            <form id="create-work-form" class="create-form">
+                <div class="form-group">
+                    <label for="work-title">Title *</label>
+                    <input type="text" id="work-title" name="title" required maxlength="200">
+                </div>
+                
+                <div class="form-group">
+                    <label for="work-description">Description</label>
+                    <textarea id="work-description" name="description" rows="4" maxlength="1000"></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="work-type">Type</label>
+                        <select id="work-type" name="type">
+                            <option value="">Select type...</option>
+                            <option value="Novel">Novel</option>
+                            <option value="Short Story">Short Story</option>
+                            <option value="Screenplay">Screenplay</option>
+                            <option value="Play">Play</option>
+                            <option value="Comic">Comic</option>
+                            <option value="Game">Game</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="work-genre">Genre</label>
+                        <input type="text" id="work-genre" name="genre" maxlength="100">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="work-status">Status</label>
+                    <select id="work-status" name="status">
+                        <option value="">Select status...</option>
+                        <option value="Planning">Planning</option>
+                        <option value="Writing">Writing</option>
+                        <option value="Editing">Editing</option>
+                        <option value="Complete">Complete</option>
+                        <option value="Published">Published</option>
+                        <option value="On Hold">On Hold</option>
+                    </select>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Create Work</button>
+                    <button type="button" class="btn btn-secondary" onclick="app.showSection('works')">Cancel</button>
+                </div>
+            </form>
+        `;
+        
+        // Add form submission handler
+        document.getElementById('create-work-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleCreateWork(e.target);
+        });
+    }
+
+    // Render Create Example Form
+    renderCreateExampleForm() {
+        const tropeOptions = this.data.tropes.map(trope => 
+            `<option value="${trope.id}">${this.escapeHtml(trope.name)}</option>`
+        ).join('');
+        
+        const workOptions = this.data.works.map(work => 
+            `<option value="${work.id}">${this.escapeHtml(work.title)}</option>`
+        ).join('');
+
+        document.getElementById('content').innerHTML = `
+            <div class="section-header">
+                <h1>Create New Example</h1>
+                <button class="btn btn-secondary" onclick="app.showSection('examples')">← Back to Examples</button>
+            </div>
+            
+            <form id="create-example-form" class="create-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="example-trope">Trope *</label>
+                        <select id="example-trope" name="trope_id" required>
+                            <option value="">Select a trope...</option>
+                            ${tropeOptions}
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="example-work">Work *</label>
+                        <select id="example-work" name="work_id" required>
+                            <option value="">Select a work...</option>
+                            ${workOptions}
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="example-description">Description *</label>
+                    <textarea id="example-description" name="description" rows="4" required maxlength="1000" 
+                              placeholder="Describe how this trope appears in this work..."></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="example-chapter">Chapter/Section Reference</label>
+                        <input type="text" id="example-chapter" name="chapter_reference" maxlength="100"
+                               placeholder="e.g., Chapter 5, Act II, Scene 3">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="example-notes">Notes</label>
+                    <textarea id="example-notes" name="notes" rows="3" maxlength="500"
+                              placeholder="Additional notes about this example..."></textarea>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Create Example</button>
+                    <button type="button" class="btn btn-secondary" onclick="app.showSection('examples')">Cancel</button>
+                </div>
+            </form>
+        `;
+        
+        // Add form submission handler
+        document.getElementById('create-example-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleCreateExample(e.target);
+        });
+    }
+
+    // Handle Work creation
+    async handleCreateWork(form) {
+        const formData = new FormData(form);
+        const workData = {
+            title: formData.get('title').trim(),
+            description: formData.get('description').trim() || null,
+            type: formData.get('type') || null,
+            genre: formData.get('genre').trim() || null,
+            status: formData.get('status') || null
+        };
+
+        try {
+            const response = await fetch('/api/works', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(workData)
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                // Success! Reload data and show works section
+                await this.loadData();
+                this.showSection('works');
+                alert(`Work "${workData.title}" has been created successfully!`);
+            } else {
+                // Error
+                alert(`Failed to create work: ${result.error || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('Error creating work:', error);
+            alert('Failed to create work. Please check your connection.');
+        }
+    }
+
+    // Handle Example creation
+    async handleCreateExample(form) {
+        const formData = new FormData(form);
+        const exampleData = {
+            trope_id: parseInt(formData.get('trope_id')),
+            work_id: parseInt(formData.get('work_id')),
+            description: formData.get('description').trim(),
+            chapter_reference: formData.get('chapter_reference').trim() || null,
+            notes: formData.get('notes').trim() || null
+        };
+
+        try {
+            const response = await fetch('/api/examples', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(exampleData)
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                // Success! Reload data and show examples section
+                await this.loadData();
+                this.showSection('examples');
+                alert('Example has been created successfully!');
+            } else {
+                // Error
+                alert(`Failed to create example: ${result.error || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('Error creating example:', error);
+            alert('Failed to create example. Please check your connection.');
+        }
+    }
+
+    // Edit and Delete methods for Works and Examples
+    async editWork(workId) {
+        // TODO: Implement edit work functionality
+        alert('Edit work functionality coming soon!');
+    }
+
+    async deleteWork(workId) {
+        const work = this.data.works.find(w => w.id === workId);
+        if (!work) return;
+
+        if (!confirm(`Are you sure you want to delete the work "${work.title}"?\n\nThis will also delete all examples associated with this work.`)) {
+            return;
+        }
+
+        try {
+            const deleteResponse = await fetch(`/api/works/${workId}`, {
+                method: 'DELETE'
+            });
+            
+            const result = await deleteResponse.json();
+            
+            if (deleteResponse.ok) {
+                // Success! Reload data and show message
+                await this.loadData();
+                alert(`Work "${work.title}" has been deleted successfully.`);
+            } else {
+                // Error
+                alert(`Failed to delete work: ${result.error || 'Unknown error'}`);
+            }
+            
+        } catch (error) {
+            console.error('Error deleting work:', error);
+            alert('Failed to delete work. Please check your connection.');
+        }
+    }
+
+    async editExample(exampleId) {
+        // TODO: Implement edit example functionality
+        alert('Edit example functionality coming soon!');
+    }
+
+    async deleteExample(exampleId) {
+        const example = this.data.examples.find(e => e.id === exampleId);
+        if (!example) return;
+
+        const trope = this.data.tropes.find(t => t.id === example.trope_id);
+        const work = this.data.works.find(w => w.id === example.work_id);
+
+        if (!confirm(`Are you sure you want to delete this example?\n\nTrope: ${trope?.name || 'Unknown'}\nWork: ${work?.title || 'Unknown'}`)) {
+            return;
+        }
+
+        try {
+            const deleteResponse = await fetch(`/api/examples/${exampleId}`, {
+                method: 'DELETE'
+            });
+            
+            const result = await deleteResponse.json();
+            
+            if (deleteResponse.ok) {
+                // Success! Reload data and show message
+                await this.loadData();
+                alert('Example has been deleted successfully.');
+            } else {
+                // Error
+                alert(`Failed to delete example: ${result.error || 'Unknown error'}`);
+            }
+            
+        } catch (error) {
+            console.error('Error deleting example:', error);
+            alert('Failed to delete example. Please check your connection.');
         }
     }
 }

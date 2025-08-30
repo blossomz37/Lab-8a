@@ -37,6 +37,32 @@ def normalize_search_term(text):
     # Convert to lowercase and replace underscores with spaces for search
     return text.lower().replace('_', ' ')
 
+def get_database_stats():
+    """Get basic database statistics for API info"""
+    try:
+        conn = get_db_connection()
+        
+        tropes = conn.execute('SELECT COUNT(*) as count FROM tropes').fetchone()['count']
+        categories = conn.execute('SELECT COUNT(*) as count FROM categories').fetchone()['count']
+        works = conn.execute('SELECT COUNT(*) as count FROM works').fetchone()['count']
+        examples = conn.execute('SELECT COUNT(*) as count FROM examples').fetchone()['count']
+        
+        conn.close()
+        
+        return {
+            'tropes': tropes,
+            'categories': categories,
+            'works': works,
+            'examples': examples
+        }
+    except:
+        return {
+            'tropes': 0,
+            'categories': 0,
+            'works': 0,
+            'examples': 0
+        }
+
 @app.route('/')
 def home():
     """Serve the main web interface"""
@@ -47,23 +73,30 @@ def api_info():
     """API information and available endpoints"""
     return jsonify({
         "name": "Personal Trope Database API",
-        "version": "4.5.0",
-        "description": "API for managing tropes, categories, and analytics",
+        "version": "5.0.0",
+        "description": "API for managing tropes, categories, works, and examples",
         "endpoints": {
             "categories": "/api/categories",
             "tropes": "/api/tropes",
             "trope_detail": "/api/tropes/{id}",
+            "works": "/api/works",
+            "work_detail": "/api/works/{id}",
+            "examples": "/api/examples", 
+            "example_detail": "/api/examples/{id}",
             "search": "/api/search",
             "analytics": "/api/analytics",
             "export_csv": "/api/export/csv"
         },
         "features": [
             "Full CRUD operations for tropes",
+            "Full CRUD operations for works",
+            "Full CRUD operations for examples (trope-work links)",
             "Category management and filtering", 
             "Advanced sorting and search",
             "Data export and analytics",
             "Real-time statistics"
-        ]
+        ],
+        "database_info": get_database_stats()
     })
 
 @app.route('/api/tropes')
@@ -1074,6 +1107,362 @@ def delete_work(work_id):
             "message": "Work deleted successfully",
             "deleted_work": dict_from_row(work),
             "deleted_examples": example_count
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ======================
+# EXAMPLES API ENDPOINTS  
+# ======================
+
+@app.route('/api/examples')
+def get_examples():
+    """Get all examples with optional filtering and sorting"""
+    try:
+        conn = get_db_connection()
+        
+        # Get query parameters
+        search = request.args.get('search', '').strip()
+        trope_id = request.args.get('trope_id', '').strip()
+        work_id = request.args.get('work_id', '').strip()
+        sort_by = request.args.get('sort', 'created_at')  # created_at, trope_name, work_title
+        sort_order = request.args.get('order', 'desc')  # asc or desc
+        
+        # Build base query with joins for trope and work information
+        query = """
+        SELECT 
+            e.id,
+            e.trope_id,
+            e.work_id,
+            e.description,
+            e.page_reference,
+            e.created_at,
+            e.updated_at,
+            t.name as trope_name,
+            t.description as trope_description,
+            w.title as work_title,
+            w.type as work_type,
+            w.year as work_year,
+            w.author as work_author
+        FROM examples e
+        JOIN tropes t ON e.trope_id = t.id  
+        JOIN works w ON e.work_id = w.id
+        WHERE 1=1
+        """
+        params = []
+        
+        # Add search filter (searches example descriptions and page references)
+        if search:
+            query += " AND (e.description LIKE ? OR e.page_reference LIKE ? OR t.name LIKE ? OR w.title LIKE ?)"
+            search_term = f"%{search}%"
+            params.extend([search_term, search_term, search_term, search_term])
+        
+        # Add trope filter
+        if trope_id:
+            query += " AND e.trope_id = ?"
+            params.append(trope_id)
+        
+        # Add work filter  
+        if work_id:
+            query += " AND e.work_id = ?"
+            params.append(work_id)
+        
+        # Add sorting
+        sort_fields_map = {
+            'created_at': 'e.created_at',
+            'trope_name': 't.name',
+            'work_title': 'w.title',
+            'description': 'e.description'
+        }
+        
+        sort_field = sort_fields_map.get(sort_by, 'e.created_at')
+        sort_direction = 'DESC' if sort_order.lower() == 'desc' else 'ASC'
+        query += f" ORDER BY {sort_field} {sort_direction}"
+        
+        examples = conn.execute(query, params).fetchall()
+        
+        # Convert to list of dictionaries
+        examples_list = [dict_from_row(example) for example in examples]
+        
+        # Get total count for metadata
+        count_query = """
+        SELECT COUNT(*) as total 
+        FROM examples e
+        JOIN tropes t ON e.trope_id = t.id
+        JOIN works w ON e.work_id = w.id
+        WHERE 1=1
+        """
+        count_params = []
+        
+        if search:
+            count_query += " AND (e.description LIKE ? OR e.page_reference LIKE ? OR t.name LIKE ? OR w.title LIKE ?)"
+            search_term = f"%{search}%"
+            count_params.extend([search_term, search_term, search_term, search_term])
+        
+        if trope_id:
+            count_query += " AND e.trope_id = ?"
+            count_params.append(trope_id)
+            
+        if work_id:
+            count_query += " AND e.work_id = ?"
+            count_params.append(work_id)
+            
+        total_count = conn.execute(count_query, count_params).fetchone()['total']
+        
+        conn.close()
+        
+        return jsonify({
+            "examples": examples_list,
+            "total": total_count,
+            "filters": {
+                "search": search,
+                "trope_id": trope_id,
+                "work_id": work_id
+            },
+            "sorting": {
+                "sort_by": sort_by,
+                "sort_order": sort_order
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/examples', methods=['POST'])
+def create_example():
+    """Create a new example linking a trope to a work"""
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        if not data or not data.get('trope_id') or not data.get('work_id') or not data.get('description'):
+            return jsonify({"error": "trope_id, work_id, and description are required"}), 400
+        
+        trope_id = data.get('trope_id', '').strip()
+        work_id = data.get('work_id', '').strip()
+        description = data.get('description', '').strip()
+        page_reference = data.get('page_reference', '').strip()
+        
+        # Validate description length
+        if len(description) < 5 or len(description) > 2000:
+            return jsonify({"error": "Description must be between 5 and 2000 characters"}), 400
+        
+        # Validate page_reference length
+        if page_reference and len(page_reference) > 100:
+            return jsonify({"error": "Page reference must be 100 characters or less"}), 400
+        
+        conn = get_db_connection()
+        
+        # Validate that trope exists
+        trope = conn.execute("SELECT id, name FROM tropes WHERE id = ?", (trope_id,)).fetchone()
+        if not trope:
+            conn.close()
+            return jsonify({"error": "Trope not found"}), 400
+        
+        # Validate that work exists
+        work = conn.execute("SELECT id, title FROM works WHERE id = ?", (work_id,)).fetchone()
+        if not work:
+            conn.close()
+            return jsonify({"error": "Work not found"}), 400
+        
+        # Check for duplicate example (same trope + work combination)
+        existing = conn.execute(
+            "SELECT id FROM examples WHERE trope_id = ? AND work_id = ?", 
+            (trope_id, work_id)
+        ).fetchone()
+        if existing:
+            conn.close()
+            return jsonify({"error": "An example already exists for this trope and work combination"}), 400
+        
+        # Generate UUID and timestamps
+        example_id = str(uuid.uuid4())
+        timestamp = datetime.now().isoformat()
+        
+        # Insert into database
+        conn.execute("""
+            INSERT INTO examples (id, trope_id, work_id, description, page_reference, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (example_id, trope_id, work_id, description, page_reference, timestamp, timestamp))
+        
+        conn.commit()
+        
+        # Fetch the created example with related data
+        example_query = """
+        SELECT 
+            e.id, e.trope_id, e.work_id, e.description, e.page_reference, e.created_at, e.updated_at,
+            t.name as trope_name, w.title as work_title, w.type as work_type
+        FROM examples e
+        JOIN tropes t ON e.trope_id = t.id
+        JOIN works w ON e.work_id = w.id
+        WHERE e.id = ?
+        """
+        
+        new_example = conn.execute(example_query, (example_id,)).fetchone()
+        conn.close()
+        
+        return jsonify({
+            "message": "Example created successfully",
+            "example": dict_from_row(new_example)
+        }), 201
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/examples/<example_id>')
+def get_example(example_id):
+    """Get a specific example by ID with related trope and work data"""
+    try:
+        conn = get_db_connection()
+        
+        # Get the example with related trope and work information
+        example_query = """
+        SELECT 
+            e.id, e.trope_id, e.work_id, e.description, e.page_reference, e.created_at, e.updated_at,
+            t.name as trope_name, t.description as trope_description,
+            w.title as work_title, w.type as work_type, w.year as work_year, w.author as work_author
+        FROM examples e
+        JOIN tropes t ON e.trope_id = t.id
+        JOIN works w ON e.work_id = w.id
+        WHERE e.id = ?
+        """
+        
+        example = conn.execute(example_query, (example_id,)).fetchone()
+        
+        if not example:
+            conn.close()
+            return jsonify({"error": "Example not found"}), 404
+        
+        conn.close()
+        
+        return jsonify(dict_from_row(example))
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/examples/<example_id>', methods=['PUT'])
+def update_example(example_id):
+    """Update an existing example"""
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+        
+        conn = get_db_connection()
+        
+        # Check if example exists
+        existing_example = conn.execute("SELECT * FROM examples WHERE id = ?", (example_id,)).fetchone()
+        if not existing_example:
+            conn.close()
+            return jsonify({"error": "Example not found"}), 404
+        
+        # Get current values as defaults
+        current = dict_from_row(existing_example)
+        
+        trope_id = data.get('trope_id', current['trope_id']).strip()
+        work_id = data.get('work_id', current['work_id']).strip()
+        description = data.get('description', current['description']).strip()
+        page_reference = data.get('page_reference', current['page_reference'] or '').strip()
+        
+        # Validate description
+        if len(description) < 5 or len(description) > 2000:
+            conn.close()
+            return jsonify({"error": "Description must be between 5 and 2000 characters"}), 400
+        
+        # Validate page_reference length
+        if page_reference and len(page_reference) > 100:
+            conn.close()
+            return jsonify({"error": "Page reference must be 100 characters or less"}), 400
+        
+        # Validate that trope exists (if changed)
+        if trope_id != current['trope_id']:
+            trope = conn.execute("SELECT id FROM tropes WHERE id = ?", (trope_id,)).fetchone()
+            if not trope:
+                conn.close()
+                return jsonify({"error": "Trope not found"}), 400
+        
+        # Validate that work exists (if changed)
+        if work_id != current['work_id']:
+            work = conn.execute("SELECT id FROM works WHERE id = ?", (work_id,)).fetchone()
+            if not work:
+                conn.close()
+                return jsonify({"error": "Work not found"}), 400
+        
+        # Check for duplicate if trope_id or work_id changed
+        if trope_id != current['trope_id'] or work_id != current['work_id']:
+            duplicate_check = conn.execute(
+                "SELECT id FROM examples WHERE trope_id = ? AND work_id = ? AND id != ?", 
+                (trope_id, work_id, example_id)
+            ).fetchone()
+            
+            if duplicate_check:
+                conn.close()
+                return jsonify({"error": "An example already exists for this trope and work combination"}), 400
+        
+        # Update the example
+        timestamp = datetime.now().isoformat()
+        
+        conn.execute("""
+            UPDATE examples 
+            SET trope_id = ?, work_id = ?, description = ?, page_reference = ?, updated_at = ?
+            WHERE id = ?
+        """, (trope_id, work_id, description, page_reference, timestamp, example_id))
+        
+        conn.commit()
+        
+        # Fetch updated example with related data
+        example_query = """
+        SELECT 
+            e.id, e.trope_id, e.work_id, e.description, e.page_reference, e.created_at, e.updated_at,
+            t.name as trope_name, w.title as work_title, w.type as work_type
+        FROM examples e
+        JOIN tropes t ON e.trope_id = t.id
+        JOIN works w ON e.work_id = w.id
+        WHERE e.id = ?
+        """
+        
+        updated_example = conn.execute(example_query, (example_id,)).fetchone()
+        conn.close()
+        
+        return jsonify({
+            "message": "Example updated successfully",
+            "example": dict_from_row(updated_example)
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/examples/<example_id>', methods=['DELETE'])
+def delete_example(example_id):
+    """Delete an example"""
+    try:
+        conn = get_db_connection()
+        
+        # Get example with related data before deletion
+        example_query = """
+        SELECT 
+            e.id, e.trope_id, e.work_id, e.description, e.page_reference, e.created_at, e.updated_at,
+            t.name as trope_name, w.title as work_title, w.type as work_type
+        FROM examples e
+        JOIN tropes t ON e.trope_id = t.id
+        JOIN works w ON e.work_id = w.id
+        WHERE e.id = ?
+        """
+        
+        example = conn.execute(example_query, (example_id,)).fetchone()
+        if not example:
+            conn.close()
+            return jsonify({"error": "Example not found"}), 404
+        
+        # Delete the example
+        conn.execute("DELETE FROM examples WHERE id = ?", (example_id,))
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            "message": "Example deleted successfully",
+            "deleted_example": dict_from_row(example)
         })
         
     except Exception as e:
