@@ -111,6 +111,12 @@ yarn-error.log*
 *.css.map
 *.js.map
 
+# CSS development files
+static/style_enhanced.css
+static/style_improved.css
+static/style_original.css
+static/style_backup.css
+
 # Testing
 .coverage
 htmlcov/
