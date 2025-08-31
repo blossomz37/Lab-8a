@@ -8,36 +8,13 @@ import io
 import tempfile
 import os
 from datetime import datetime
-            "trope_detail": "/api/tropes/{id}",
-            "search": "/api/search",
-            "analytics": "/api/analytics",
-            "export_csv": "/api/export/csv",
-            "export_json": "/api/export/json"
-        },
-        "features": [
-            "Full CRUD operations for tropes",
-            "Category management and filtering", 
-            "Advanced sorting and search",
-            "Data export and analytics",
-            "Real-time statistics"
-        ]
-    })end_file
-from flask_cors import CORS
-import sqlite3
-import uuid
-import json
-import csv
-import io
-import tempfile
-import os
-from datetime import datetime
-from flask_cors import CORS
-import sqlite3
-import os
-import uuid
+from ai_routes import ai_bp
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for frontend integration later
+
+# Register AI blueprint
+app.register_blueprint(ai_bp)
 
 # Database path
 DB_PATH = os.path.join(os.path.dirname(__file__), 'db', 'genre_tropes.db')
@@ -304,7 +281,7 @@ def create_trope():
             return jsonify({
                 "message": "Trope created successfully",
                 "trope": trope_dict
-            }), 201
+            }, 201)
         else:
             return jsonify({"error": "Failed to retrieve created trope"}), 500
             
@@ -877,7 +854,7 @@ def get_analytics():
         FROM (
             SELECT COUNT(tc.category_id) as category_count
             FROM tropes t
-            LEFT JOIN trope_categories tc ON t.id = tc.trope_id
+            LEFT JOIN trope_categories tc on t.id = tc.trope_id
             GROUP BY t.id
         )
         """).fetchone()['avg_count'] or 0
@@ -926,7 +903,9 @@ def main():
         exit(1)
     
     print(f"Starting Flask app with database at: {DB_PATH}")
-    app.run(debug=True, host='0.0.0.0', port=8000, use_reloader=False)
+    # Use environment variable for port, default to 5000
+    port = int(os.environ.get('FLASK_PORT', 5000))
+    app.run(debug=True, host='0.0.0.0', port=port, use_reloader=False)
 
 if __name__ == '__main__':
     main()

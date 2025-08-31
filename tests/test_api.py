@@ -4,6 +4,11 @@ Simple test script to verify our Flask API endpoints work
 """
 import sqlite3
 import os
+import sys
+
+# Add the project root directory to the Python path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, project_root)
 
 # Test database connection directly
 db_path = os.path.join('db', 'genre_tropes.db')
@@ -85,6 +90,30 @@ try:
                 print(f"   Sample: '{sample_trope['name']}'")
         else:
             print(f"❌ Tropes endpoint failed: {response.status_code}")
+        
+        # Test AI query endpoint
+        response = client.post('/api/ai/query', json={"query": "show me all fantasy tropes"})
+        if response.status_code == 200:
+            data = response.get_json()
+            print("✅ AI query endpoint working")
+            print(f"   Response: {data}")
+        else:
+            print(f"❌ AI query endpoint failed: {response.status_code}")
+            print(f"   Error: {response.get_json()}")
+        
+        # Test missing query field
+        response = client.post('/api/ai/query', json={})
+        if response.status_code == 400:
+            print("✅ AI query endpoint handles missing query field")
+        else:
+            print(f"❌ AI query endpoint failed to handle missing query field: {response.status_code}")
+        
+        # Test empty query
+        response = client.post('/api/ai/query', json={"query": ""})
+        if response.status_code == 400:
+            print("✅ AI query endpoint handles empty query")
+        else:
+            print(f"❌ AI query endpoint failed to handle empty query: {response.status_code}")
     
     print("✅ All Flask endpoint tests passed!")
     print("\nYour API is ready! Start the server with:")
