@@ -43,6 +43,33 @@ class TropeApp {
             });
         }
         
+        // Create Work button
+        document.addEventListener('click', (e) => {
+            if (e.target.id === 'createWorkBtn') {
+                this.showSection('createWork');
+            }
+        });
+        
+                // Create Example button
+        document.addEventListener('click', (e) => {
+            if (e.target.id === 'createExampleBtn') {
+                this.showSection('createExample');
+            }
+        });
+
+        // Export buttons
+        document.addEventListener('click', (e) => {
+            if (e.target.id === 'exportTropesBtn') {
+                this.exportData('tropes');
+            } else if (e.target.id === 'exportCategoriesBtn') {
+                this.exportData('categories');
+            } else if (e.target.id === 'exportWorksBtn') {
+                this.exportData('works');
+            } else if (e.target.id === 'exportExamplesBtn') {
+                this.exportData('examples');
+            }
+        });
+        
         // Back button (will be added dynamically)
         document.addEventListener('click', (e) => {
             if (e.target.classList.contains('back-button')) {
@@ -67,24 +94,32 @@ class TropeApp {
                 tropeUrl += '?' + params.toString();
             }
             
-            // Load tropes with filters and categories
-            const [tropesResponse, categoriesResponse] = await Promise.all([
+            // Load tropes, categories, works, and examples
+            const [tropesResponse, categoriesResponse, worksResponse, examplesResponse] = await Promise.all([
                 fetch(tropeUrl),
-                fetch('/api/categories')
+                fetch('/api/categories'),
+                fetch('/api/works'),
+                fetch('/api/examples')
             ]);
             
-            if (!tropesResponse.ok || !categoriesResponse.ok) {
+            if (!tropesResponse.ok || !categoriesResponse.ok || !worksResponse.ok || !examplesResponse.ok) {
                 throw new Error('Failed to load data from API');
             }
             
             const tropesData = await tropesResponse.json();
             const categoriesData = await categoriesResponse.json();
+            const worksData = await worksResponse.json();
+            const examplesData = await examplesResponse.json();
             
             this.data.tropes = tropesData.tropes || [];
             this.data.categories = categoriesData.categories || [];
+            this.data.works = worksData.works || [];
+            this.data.examples = examplesData.examples || [];
             
             this.filteredData.tropes = [...this.data.tropes];
             this.filteredData.categories = [...this.data.categories];
+            this.filteredData.works = [...this.data.works];
+            this.filteredData.examples = [...this.data.examples];
             
             // Update results count
             this.updateResultsCount();
@@ -156,6 +191,9 @@ class TropeApp {
     
     showSection(section) {
         try {
+            // Store current view
+            this.currentView = section;
+            
             // Hide all sections
             document.querySelectorAll('.section').forEach(s => s.style.display = 'none');
             
@@ -168,9 +206,12 @@ class TropeApp {
                 return;
             }
             
+            // Update search placeholder based on section
+            this.updateSearchPlaceholder(section);
+
             // Update active navigation - remove active class from all nav buttons
             document.querySelectorAll('.nav button').forEach(btn => btn.classList.remove('active'));
-            
+
             // Add active class to the current section button
             const activeButton = document.querySelector(`.nav button[data-section="${section}"]`);
             if (activeButton) {
@@ -203,12 +244,53 @@ class TropeApp {
                 case 'createExample':
                     this.renderCreateExampleForm();
                     break;
+                case 'editWork':
+                    this.renderEditWorkForm();
+                    break;
+                case 'editExample':
+                    this.renderEditExampleForm();
+                    break;
                 case 'edit':
                     // Edit form is handled by editTrope method
                     break;
             }
+
+            // Scroll to top for edit forms to improve visibility
+            if (['editWork', 'editExample', 'createWork', 'createExample'].includes(section)) {
+                setTimeout(() => {
+                    window.scrollTo({
+                        top: 0,
+                        behavior: 'smooth'
+                    });
+                }, 100);
+            }
         } catch (error) {
             console.error('Error in showSection:', error);
+        }
+    }
+    
+    updateSearchPlaceholder(section) {
+        const searchInput = document.getElementById('searchInput');
+        if (!searchInput) return;
+        
+        const placeholders = {
+            'tropes': 'Search tropes, descriptions, or categories...',
+            'categories': 'Search categories...',
+            'works': 'Search works by title, author, or description...',
+            'examples': 'Search examples by description or reference...',
+            'analytics': 'Search not available in analytics',
+            'create': 'Search not available',
+            'createWork': 'Search not available',
+            'createExample': 'Search not available',
+            'editWork': 'Search not available',
+            'editExample': 'Search not available'
+        };
+        
+        searchInput.placeholder = placeholders[section] || 'Search...';
+        
+        // Clear search when switching sections unless staying in tropes/categories
+        if (!['tropes', 'categories'].includes(section)) {
+            searchInput.value = '';
         }
     }
     
@@ -251,6 +333,11 @@ class TropeApp {
     
     renderCategories() {
         const container = document.getElementById('categoriesContent');
+        const countElement = document.getElementById('categoriesResultsCount');
+        
+        if (countElement) {
+            countElement.textContent = `${this.filteredData.categories.length} categories`;
+        }
         
         if (this.filteredData.categories.length === 0) {
             container.innerHTML = '<div class="text-center text-muted">No categories found.</div>';
@@ -463,23 +550,49 @@ class TropeApp {
             // Reset to original data
             this.filteredData.tropes = [...this.data.tropes];
             this.filteredData.categories = [...this.data.categories];
+            this.filteredData.works = [...this.data.works];
+            this.filteredData.examples = [...this.data.examples];
             this.updateSearchResults('');
         } else {
-            // Use the new search API endpoint
-            try {
-                const response = await fetch(`/api/search?q=${encodeURIComponent(searchTerm)}`);
-                if (!response.ok) {
-                    throw new Error('Search failed');
+            // Handle search based on current section
+            if (this.currentView === 'tropes' || this.currentView === 'categories') {
+                // Use the API search for tropes/categories
+                try {
+                    const response = await fetch(`/api/search?q=${encodeURIComponent(searchTerm)}`);
+                    if (!response.ok) {
+                        throw new Error('Search failed');
+                    }
+                    
+                    const searchResults = await response.json();
+                    this.filteredData.tropes = searchResults.tropes;
+                    this.filteredData.categories = searchResults.categories;
+                    this.updateSearchResults(searchTerm, searchResults.total_results);
+                } catch (error) {
+                    console.error('Search error:', error);
+                    // Fallback to client-side search
+                    this.clientSideSearch(searchTerm);
                 }
-                
-                const searchResults = await response.json();
-                this.filteredData.tropes = searchResults.tropes;
-                this.filteredData.categories = searchResults.categories;
-                this.updateSearchResults(searchTerm, searchResults.total_results);
-            } catch (error) {
-                console.error('Search error:', error);
-                // Fallback to client-side search
-                this.clientSideSearch(searchTerm);
+            } else if (this.currentView === 'works') {
+                // Client-side search for works
+                this.filteredData.works = this.data.works.filter(work => 
+                    work.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    (work.author && work.author.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                    (work.description && work.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                    work.type.toLowerCase().includes(searchTerm.toLowerCase())
+                );
+                this.updateSearchResults(searchTerm, this.filteredData.works.length);
+            } else if (this.currentView === 'examples') {
+                // Client-side search for examples
+                this.filteredData.examples = this.data.examples.filter(example => {
+                    const trope = this.data.tropes.find(t => t.id === example.trope_id);
+                    const work = this.data.works.find(w => w.id === example.work_id);
+                    
+                    return example.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           (example.page_reference && example.page_reference.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                           (trope && trope.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                           (work && work.title.toLowerCase().includes(searchTerm.toLowerCase()));
+                });
+                this.updateSearchResults(searchTerm, this.filteredData.examples.length);
             }
         }
         
@@ -488,6 +601,160 @@ class TropeApp {
             this.renderTropes();
         } else if (this.currentView === 'categories') {
             this.renderCategories();
+        } else if (this.currentView === 'works') {
+            this.renderWorks();
+        } else if (this.currentView === 'examples') {
+            this.renderExamples();
+        }
+    }
+
+    // Export data functionality
+    exportData(type) {
+        let data, filename, headers;
+        
+        const currentDate = new Date().toISOString().slice(0, 10);
+        
+        switch (type) {
+            case 'tropes':
+                data = this.filteredData.tropes.length > 0 ? this.filteredData.tropes : this.data.tropes;
+                filename = `tropes_export_${currentDate}.csv`;
+                headers = ['ID', 'Name', 'Description', 'Categories', 'Created At', 'Updated At'];
+                break;
+            case 'categories':
+                data = this.filteredData.categories.length > 0 ? this.filteredData.categories : this.data.categories;
+                filename = `categories_export_${currentDate}.csv`;
+                headers = ['ID', 'Name', 'Display Name', 'Description', 'Trope Count', 'Created At', 'Updated At'];
+                break;
+            case 'works':
+                data = this.filteredData.works.length > 0 ? this.filteredData.works : this.data.works;
+                filename = `works_export_${currentDate}.csv`;
+                headers = ['ID', 'Title', 'Type', 'Year', 'Author', 'Description', 'Created At', 'Updated At'];
+                break;
+            case 'examples':
+                data = this.filteredData.examples.length > 0 ? this.filteredData.examples : this.data.examples;
+                filename = `examples_export_${currentDate}.csv`;
+                headers = ['ID', 'Trope Name', 'Work Title', 'Description', 'Page Reference', 'Created At', 'Updated At'];
+                break;
+            default:
+                console.error('Unknown export type:', type);
+                return;
+        }
+
+        if (!data || data.length === 0) {
+            alert(`No ${type} data available to export.`);
+            return;
+        }
+
+        try {
+            const csv = this.convertToCSV(data, type, headers);
+            this.downloadCSV(csv, filename);
+            
+            // Show success message
+            const count = data.length;
+            alert(`Successfully exported ${count} ${type} to ${filename}`);
+        } catch (error) {
+            console.error('Export error:', error);
+            alert(`Failed to export ${type}. Please try again.`);
+        }
+    }
+
+    convertToCSV(data, type, headers) {
+        const rows = [headers];
+        
+        data.forEach(item => {
+            let row;
+            
+            switch (type) {
+                case 'tropes':
+                    row = [
+                        this.escapeCSV(item.id || ''),
+                        this.escapeCSV(item.name || ''),
+                        this.escapeCSV(item.description || ''),
+                        this.escapeCSV((item.categories || []).join('; ') || ''),
+                        this.escapeCSV(item.created_at || ''),
+                        this.escapeCSV(item.updated_at || '')
+                    ];
+                    break;
+                case 'categories':
+                    row = [
+                        this.escapeCSV(item.id || ''),
+                        this.escapeCSV(item.name || ''),
+                        this.escapeCSV(item.display_name || ''),
+                        this.escapeCSV(item.description || ''),
+                        this.escapeCSV(item.trope_count?.toString() || '0'),
+                        this.escapeCSV(item.created_at || ''),
+                        this.escapeCSV(item.updated_at || '')
+                    ];
+                    break;
+                case 'works':
+                    row = [
+                        this.escapeCSV(item.id || ''),
+                        this.escapeCSV(item.title || ''),
+                        this.escapeCSV(item.type || ''),
+                        this.escapeCSV(item.year?.toString() || ''),
+                        this.escapeCSV(item.author || ''),
+                        this.escapeCSV(item.description || ''),
+                        this.escapeCSV(item.created_at || ''),
+                        this.escapeCSV(item.updated_at || '')
+                    ];
+                    break;
+                case 'examples':
+                    // Find trope and work names for examples
+                    const trope = this.data.tropes.find(t => t.id === item.trope_id);
+                    const work = this.data.works.find(w => w.id === item.work_id);
+                    
+                    row = [
+                        this.escapeCSV(item.id || ''),
+                        this.escapeCSV(trope?.name || 'Unknown Trope'),
+                        this.escapeCSV(work?.title || 'Unknown Work'),
+                        this.escapeCSV(item.description || ''),
+                        this.escapeCSV(item.page_reference || ''),
+                        this.escapeCSV(item.created_at || ''),
+                        this.escapeCSV(item.updated_at || '')
+                    ];
+                    break;
+                default:
+                    row = [];
+            }
+            
+            rows.push(row);
+        });
+        
+        return rows.map(row => row.join(',')).join('\n');
+    }
+
+    escapeCSV(field) {
+        if (field == null) return '';
+        
+        // Convert to string
+        const str = String(field);
+        
+        // If field contains comma, quote, or newline, wrap in quotes and escape internal quotes
+        if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+            return '"' + str.replace(/"/g, '""') + '"';
+        }
+        
+        return str;
+    }
+
+    downloadCSV(csvContent, filename) {
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        
+        if (link.download !== undefined) {
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            // Clean up the URL object
+            setTimeout(() => URL.revokeObjectURL(url), 100);
+        } else {
+            // Fallback for older browsers
+            alert('Your browser does not support automatic downloads. Please copy the CSV data manually.');
         }
     }
     
@@ -870,229 +1137,166 @@ class TropeApp {
 
     // Render Works section
     renderWorks() {
-        const worksGrid = document.getElementById('works-grid');
-        const worksCount = document.getElementById('works-count');
+        const worksContainer = document.getElementById('worksContent');
+        const worksCount = document.getElementById('worksResultsCount');
         
-        if (!worksGrid || !worksCount) return;
+        if (!worksContainer) return;
 
-        worksCount.textContent = `${this.data.works.length} work${this.data.works.length === 1 ? '' : 's'}`;
+        if (worksCount) {
+            worksCount.textContent = `${this.filteredData.works.length} work${this.filteredData.works.length === 1 ? '' : 's'}`;
+        }
 
-        if (this.data.works.length === 0) {
-            worksGrid.innerHTML = '<div class="no-data">No works found. Create your first work to get started!</div>';
+        if (this.filteredData.works.length === 0) {
+            worksContainer.innerHTML = '<div class="no-data">No works found. Create your first work to get started!</div>';
             return;
         }
 
-        worksGrid.innerHTML = this.data.works.map(work => `
-            <div class="card work-card" data-work-id="${work.id}">
-                <div class="card-header">
-                    <h3 class="work-title">${this.escapeHtml(work.title)}</h3>
-                    <div class="card-actions">
-                        <button class="btn btn-small" onclick="app.editWork(${work.id})">✏️ Edit</button>
-                        <button class="btn btn-danger btn-small" onclick="app.deleteWork(${work.id})">🗑️ Delete</button>
+        worksContainer.innerHTML = `
+            <div class="items-grid">
+                ${this.filteredData.works.map(work => `
+                    <div class="item-card">
+                        <div class="item-content">
+                            <div class="item-title">${this.escapeHtml(work.title)}</div>
+                            <div class="item-description">
+                                ${this.escapeHtml(work.description || 'No description provided.')}
+                            </div>
+                            <div class="item-meta">
+                                <span class="tag">${this.escapeHtml(work.type)}</span>
+                                ${work.author ? `<span class="tag">${this.escapeHtml(work.author)}</span>` : ''}
+                                ${work.year ? `<span class="tag">${work.year}</span>` : ''}
+                                <span class="tag">${this.data.examples.filter(ex => ex.work_id === work.id).length} examples</span>
+                            </div>
+                        </div>
+                        <div class="item-actions">
+                            <button class="action-btn action-edit" onclick="app.editWork('${work.id}'); event.stopPropagation();" aria-label="Edit work">
+                                ✏️
+                            </button>
+                            <button class="action-btn action-delete" onclick="app.deleteWork('${work.id}'); event.stopPropagation();" aria-label="Delete work">
+                                🗑️
+                            </button>
+                        </div>
                     </div>
-                </div>
-                <div class="card-body">
-                    <p class="work-description">${this.escapeHtml(work.description || 'No description provided.')}</p>
-                    <div class="work-metadata">
-                        <span class="work-type">${this.escapeHtml(work.type)}</span>
-                        ${work.genre ? `<span class="work-genre">${this.escapeHtml(work.genre)}</span>` : ''}
-                        ${work.status ? `<span class="work-status">${this.escapeHtml(work.status)}</span>` : ''}
-                    </div>
-                    <div class="examples-count">
-                        ${this.data.examples.filter(ex => ex.work_id === work.id).length} trope examples
-                    </div>
-                </div>
+                `).join('')}
             </div>
-        `).join('');
+        `;
     }
 
     // Render Examples section
     renderExamples() {
-        const examplesGrid = document.getElementById('examples-grid');
-        const examplesCount = document.getElementById('examples-count');
+        const examplesContainer = document.getElementById('examplesContent');
+        const examplesCount = document.getElementById('examplesResultsCount');
         
-        if (!examplesGrid || !examplesCount) return;
+        if (!examplesContainer) return;
 
-        examplesCount.textContent = `${this.data.examples.length} example${this.data.examples.length === 1 ? '' : 's'}`;
+        if (examplesCount) {
+            examplesCount.textContent = `${this.filteredData.examples.length} example${this.filteredData.examples.length === 1 ? '' : 's'}`;
+        }
 
-        if (this.data.examples.length === 0) {
-            examplesGrid.innerHTML = '<div class="no-data">No examples found. Create your first trope-work connection!</div>';
+        if (this.filteredData.examples.length === 0) {
+            examplesContainer.innerHTML = '<div class="no-data">No examples found. Create your first trope-work connection!</div>';
             return;
         }
 
-        examplesGrid.innerHTML = this.data.examples.map(example => {
-            const trope = this.data.tropes.find(t => t.id === example.trope_id);
-            const work = this.data.works.find(w => w.id === example.work_id);
-            
-            return `
-                <div class="card example-card" data-example-id="${example.id}">
-                    <div class="card-header">
-                        <div class="example-connection">
-                            <span class="trope-name">${this.escapeHtml(trope ? trope.name : 'Unknown Trope')}</span>
-                            <span class="connection-arrow">→</span>
-                            <span class="work-name">${this.escapeHtml(work ? work.title : 'Unknown Work')}</span>
+        examplesContainer.innerHTML = `
+            <div class="items-grid">
+                ${this.filteredData.examples.map(example => {
+                    const trope = this.data.tropes.find(t => t.id === example.trope_id);
+                    const work = this.data.works.find(w => w.id === example.work_id);
+                    
+                    return `
+                        <div class="item-card">
+                            <div class="item-content">
+                                <div class="item-title">
+                                    <span class="trope-name">${this.escapeHtml(trope ? trope.name : 'Unknown Trope')}</span>
+                                    <span class="connection-arrow"> → </span>
+                                    <span class="work-name">${this.escapeHtml(work ? work.title : 'Unknown Work')}</span>
+                                </div>
+                                <div class="item-description">
+                                    ${this.escapeHtml(example.description || 'No description provided.')}
+                                </div>
+                                ${example.page_reference ? `<div class="item-meta">
+                                    <span class="tag">Page: ${this.escapeHtml(example.page_reference)}</span>
+                                </div>` : ''}
+                            </div>
+                            <div class="item-actions">
+                                <button class="action-btn action-edit" onclick="app.editExample('${example.id}'); event.stopPropagation();" aria-label="Edit example">
+                                    ✏️
+                                </button>
+                                <button class="action-btn action-delete" onclick="app.deleteExample('${example.id}'); event.stopPropagation();" aria-label="Delete example">
+                                    🗑️
+                                </button>
+                            </div>
                         </div>
-                        <div class="card-actions">
-                            <button class="btn btn-small" onclick="app.editExample(${example.id})">✏️ Edit</button>
-                            <button class="btn btn-danger btn-small" onclick="app.deleteExample(${example.id})">🗑️ Delete</button>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <p class="example-description">${this.escapeHtml(example.description || 'No description provided.')}</p>
-                        ${example.chapter_reference ? `<div class="chapter-reference">Chapter: ${this.escapeHtml(example.chapter_reference)}</div>` : ''}
-                        ${example.notes ? `<div class="example-notes">Notes: ${this.escapeHtml(example.notes)}</div>` : ''}
-                    </div>
-                </div>
-            `;
-        }).join('');
+                    `;
+                }).join('')}
+            </div>
+        `;
     }
 
     // Render Create Work Form
+    // Render Create Work Form
     renderCreateWorkForm() {
-        document.getElementById('content').innerHTML = `
-            <div class="section-header">
-                <h1>Create New Work</h1>
-                <button class="btn btn-secondary" onclick="app.showSection('works')">← Back to Works</button>
-            </div>
-            
-            <form id="create-work-form" class="create-form">
-                <div class="form-group">
-                    <label for="work-title">Title *</label>
-                    <input type="text" id="work-title" name="title" required maxlength="200">
-                </div>
-                
-                <div class="form-group">
-                    <label for="work-description">Description</label>
-                    <textarea id="work-description" name="description" rows="4" maxlength="1000"></textarea>
-                </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="work-type">Type</label>
-                        <select id="work-type" name="type">
-                            <option value="">Select type...</option>
-                            <option value="Novel">Novel</option>
-                            <option value="Short Story">Short Story</option>
-                            <option value="Screenplay">Screenplay</option>
-                            <option value="Play">Play</option>
-                            <option value="Comic">Comic</option>
-                            <option value="Game">Game</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="work-genre">Genre</label>
-                        <input type="text" id="work-genre" name="genre" maxlength="100">
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label for="work-status">Status</label>
-                    <select id="work-status" name="status">
-                        <option value="">Select status...</option>
-                        <option value="Planning">Planning</option>
-                        <option value="Writing">Writing</option>
-                        <option value="Editing">Editing</option>
-                        <option value="Complete">Complete</option>
-                        <option value="Published">Published</option>
-                        <option value="On Hold">On Hold</option>
-                    </select>
-                </div>
-                
-                <div class="form-actions">
-                    <button type="submit" class="btn btn-primary">Create Work</button>
-                    <button type="button" class="btn btn-secondary" onclick="app.showSection('works')">Cancel</button>
-                </div>
-            </form>
-        `;
-        
-        // Add form submission handler
-        document.getElementById('create-work-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.handleCreateWork(e.target);
-        });
+        // Set up form submission handler
+        const form = document.getElementById('createWorkForm');
+        if (form) {
+            form.onsubmit = (e) => {
+                e.preventDefault();
+                this.handleCreateWork(form);
+            };
+        }
     }
 
     // Render Create Example Form
     renderCreateExampleForm() {
-        const tropeOptions = this.data.tropes.map(trope => 
-            `<option value="${trope.id}">${this.escapeHtml(trope.name)}</option>`
-        ).join('');
+        // Populate the trope dropdown
+        const tropeSelect = document.getElementById('exampleTrope');
+        if (tropeSelect) {
+            tropeSelect.innerHTML = '<option value="">Select trope...</option>' + 
+                this.data.tropes.map(trope => 
+                    `<option value="${trope.id}">${this.escapeHtml(trope.name)}</option>`
+                ).join('');
+        }
         
-        const workOptions = this.data.works.map(work => 
-            `<option value="${work.id}">${this.escapeHtml(work.title)}</option>`
-        ).join('');
-
-        document.getElementById('content').innerHTML = `
-            <div class="section-header">
-                <h1>Create New Example</h1>
-                <button class="btn btn-secondary" onclick="app.showSection('examples')">← Back to Examples</button>
-            </div>
-            
-            <form id="create-example-form" class="create-form">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="example-trope">Trope *</label>
-                        <select id="example-trope" name="trope_id" required>
-                            <option value="">Select a trope...</option>
-                            ${tropeOptions}
-                        </select>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="example-work">Work *</label>
-                        <select id="example-work" name="work_id" required>
-                            <option value="">Select a work...</option>
-                            ${workOptions}
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label for="example-description">Description *</label>
-                    <textarea id="example-description" name="description" rows="4" required maxlength="1000" 
-                              placeholder="Describe how this trope appears in this work..."></textarea>
-                </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="example-chapter">Chapter/Section Reference</label>
-                        <input type="text" id="example-chapter" name="chapter_reference" maxlength="100"
-                               placeholder="e.g., Chapter 5, Act II, Scene 3">
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label for="example-notes">Notes</label>
-                    <textarea id="example-notes" name="notes" rows="3" maxlength="500"
-                              placeholder="Additional notes about this example..."></textarea>
-                </div>
-                
-                <div class="form-actions">
-                    <button type="submit" class="btn btn-primary">Create Example</button>
-                    <button type="button" class="btn btn-secondary" onclick="app.showSection('examples')">Cancel</button>
-                </div>
-            </form>
-        `;
+        // Populate the work dropdown
+        const workSelect = document.getElementById('exampleWork');
+        if (workSelect) {
+            workSelect.innerHTML = '<option value="">Select work...</option>' + 
+                this.data.works.map(work => 
+                    `<option value="${work.id}">${this.escapeHtml(work.title)}</option>`
+                ).join('');
+        }
         
-        // Add form submission handler
-        document.getElementById('create-example-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.handleCreateExample(e.target);
-        });
+        // Set up form submission handler
+        const form = document.getElementById('createExampleForm');
+        if (form) {
+            form.onsubmit = (e) => {
+                e.preventDefault();
+                this.handleCreateExample(form);
+            };
+        }
     }
 
     // Handle Work creation
     async handleCreateWork(form) {
         const formData = new FormData(form);
         const workData = {
-            title: formData.get('title').trim(),
-            description: formData.get('description').trim() || null,
+            title: formData.get('title') ? formData.get('title').trim() : '',
             type: formData.get('type') || null,
-            genre: formData.get('genre').trim() || null,
-            status: formData.get('status') || null
+            year: formData.get('year') ? parseInt(formData.get('year')) : null,
+            author: formData.get('author') ? formData.get('author').trim() : null,
+            description: formData.get('description') ? formData.get('description').trim() : null
         };
+
+        // Validate required fields
+        if (!workData.title) {
+            alert('Please enter a work title.');
+            return;
+        }
+        
+        if (!workData.type) {
+            alert('Please select a work type.');
+            return;
+        }
 
         try {
             const response = await fetch('/api/works', {
@@ -1110,6 +1314,9 @@ class TropeApp {
                 await this.loadData();
                 this.showSection('works');
                 alert(`Work "${workData.title}" has been created successfully!`);
+                
+                // Reset form
+                form.reset();
             } else {
                 // Error
                 alert(`Failed to create work: ${result.error || 'Unknown error'}`);
@@ -1124,12 +1331,17 @@ class TropeApp {
     async handleCreateExample(form) {
         const formData = new FormData(form);
         const exampleData = {
-            trope_id: parseInt(formData.get('trope_id')),
-            work_id: parseInt(formData.get('work_id')),
-            description: formData.get('description').trim(),
-            chapter_reference: formData.get('chapter_reference').trim() || null,
-            notes: formData.get('notes').trim() || null
+            trope_id: formData.get('trope_id'),
+            work_id: formData.get('work_id'),
+            description: formData.get('description') ? formData.get('description').trim() : '',
+            page_reference: formData.get('page_reference') ? formData.get('page_reference').trim() : null
         };
+
+        // Validate required fields
+        if (!exampleData.trope_id || !exampleData.work_id || !exampleData.description) {
+            alert('Please fill in all required fields (Trope, Work, and Description).');
+            return;
+        }
 
         try {
             const response = await fetch('/api/examples', {
@@ -1147,6 +1359,9 @@ class TropeApp {
                 await this.loadData();
                 this.showSection('examples');
                 alert('Example has been created successfully!');
+                
+                // Reset form
+                form.reset();
             } else {
                 // Error
                 alert(`Failed to create example: ${result.error || 'Unknown error'}`);
@@ -1159,8 +1374,93 @@ class TropeApp {
 
     // Edit and Delete methods for Works and Examples
     async editWork(workId) {
-        // TODO: Implement edit work functionality
-        alert('Edit work functionality coming soon!');
+        // Store the work ID for the edit operation
+        this.currentEditWorkId = workId;
+        
+        // Find the work to edit
+        const work = this.data.works.find(w => w.id === workId);
+        if (!work) {
+            alert('Work not found!');
+            return;
+        }
+        
+        // Show the edit section
+        this.showSection('editWork');
+    }
+
+    renderEditWorkForm() {
+        if (!this.currentEditWorkId) return;
+        
+        const work = this.data.works.find(w => w.id === this.currentEditWorkId);
+        if (!work) return;
+        
+        // Populate form fields
+        document.getElementById('editWorkTitle').value = work.title || '';
+        document.getElementById('editWorkType').value = work.type || '';
+        document.getElementById('editWorkYear').value = work.year || '';
+        document.getElementById('editWorkAuthor').value = work.author || '';
+        document.getElementById('editWorkDescription').value = work.description || '';
+        
+        // Set up form submission handler
+        const form = document.getElementById('editWorkForm');
+        if (form) {
+            form.onsubmit = (e) => {
+                e.preventDefault();
+                this.handleUpdateWork(form);
+            };
+        }
+    }
+
+    async handleUpdateWork(form) {
+        if (!this.currentEditWorkId) return;
+        
+        const formData = new FormData(form);
+        const workData = {
+            title: formData.get('title') ? formData.get('title').trim() : '',
+            type: formData.get('type') || null,
+            year: formData.get('year') ? parseInt(formData.get('year')) : null,
+            author: formData.get('author') ? formData.get('author').trim() : null,
+            description: formData.get('description') ? formData.get('description').trim() : null
+        };
+
+        // Validate required fields
+        if (!workData.title) {
+            alert('Please enter a work title.');
+            return;
+        }
+        
+        if (!workData.type) {
+            alert('Please select a work type.');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/works/${this.currentEditWorkId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(workData)
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                // Success! Reload data and show works section
+                await this.loadData();
+                this.showSection('works');
+                alert(`Work "${workData.title}" has been updated successfully!`);
+                
+                // Clear the current edit ID
+                this.currentEditWorkId = null;
+            } else {
+                // Error
+                alert(`Failed to update work: ${result.error || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('Error updating work:', error);
+            alert('Failed to update work. Please check your connection.');
+        }
     }
 
     async deleteWork(workId) {
@@ -1194,8 +1494,102 @@ class TropeApp {
     }
 
     async editExample(exampleId) {
-        // TODO: Implement edit example functionality
-        alert('Edit example functionality coming soon!');
+        // Store the example ID for the edit operation
+        this.currentEditExampleId = exampleId;
+        
+        // Find the example to edit
+        const example = this.data.examples.find(e => e.id === exampleId);
+        if (!example) {
+            alert('Example not found!');
+            return;
+        }
+        
+        // Show the edit section
+        this.showSection('editExample');
+    }
+
+    renderEditExampleForm() {
+        if (!this.currentEditExampleId) return;
+        
+        const example = this.data.examples.find(e => e.id === this.currentEditExampleId);
+        if (!example) return;
+        
+        // Populate the trope dropdown
+        const tropeSelect = document.getElementById('editExampleTrope');
+        if (tropeSelect) {
+            tropeSelect.innerHTML = '<option value="">Select trope...</option>' + 
+                this.data.tropes.map(trope => 
+                    `<option value="${trope.id}" ${trope.id === example.trope_id ? 'selected' : ''}>${this.escapeHtml(trope.name)}</option>`
+                ).join('');
+        }
+        
+        // Populate the work dropdown
+        const workSelect = document.getElementById('editExampleWork');
+        if (workSelect) {
+            workSelect.innerHTML = '<option value="">Select work...</option>' + 
+                this.data.works.map(work => 
+                    `<option value="${work.id}" ${work.id === example.work_id ? 'selected' : ''}>${this.escapeHtml(work.title)}</option>`
+                ).join('');
+        }
+        
+        // Populate other form fields
+        document.getElementById('editExampleDescription').value = example.description || '';
+        document.getElementById('editExamplePageRef').value = example.page_reference || '';
+        
+        // Set up form submission handler
+        const form = document.getElementById('editExampleForm');
+        if (form) {
+            form.onsubmit = (e) => {
+                e.preventDefault();
+                this.handleUpdateExample(form);
+            };
+        }
+    }
+
+    async handleUpdateExample(form) {
+        if (!this.currentEditExampleId) return;
+        
+        const formData = new FormData(form);
+        const exampleData = {
+            trope_id: formData.get('trope_id'),
+            work_id: formData.get('work_id'),
+            description: formData.get('description') ? formData.get('description').trim() : '',
+            page_reference: formData.get('page_reference') ? formData.get('page_reference').trim() : null
+        };
+
+        // Validate required fields
+        if (!exampleData.trope_id || !exampleData.work_id || !exampleData.description) {
+            alert('Please fill in all required fields (Trope, Work, and Description).');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/examples/${this.currentEditExampleId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(exampleData)
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                // Success! Reload data and show examples section
+                await this.loadData();
+                this.showSection('examples');
+                alert('Example has been updated successfully!');
+                
+                // Clear the current edit ID
+                this.currentEditExampleId = null;
+            } else {
+                // Error
+                alert(`Failed to update example: ${result.error || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('Error updating example:', error);
+            alert('Failed to update example. Please check your connection.');
+        }
     }
 
     async deleteExample(exampleId) {
