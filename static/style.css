@@ -1089,6 +1089,312 @@ body {
     }
 }
 
+/* 🔗 Phase 5.1: Enhanced Relationships & Cross-Reference UI */
+
+/* Relationship Statistics */
+.relationship-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    font-size: var(--text-xs);
+}
+
+.stat-item {
+    background: var(--accent-50);
+    color: var(--accent-700);
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+    font-weight: 500;
+    border: 1px solid var(--accent-100);
+}
+
+[data-theme="dark"] .stat-item {
+    background: rgba(14, 165, 233, 0.1);
+    color: var(--accent-300);
+    border-color: rgba(14, 165, 233, 0.2);
+}
+
+/* Clickable Category Tags */
+.category-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    margin-bottom: 0.5rem;
+}
+
+.tag.clickable {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.tag.clickable:hover {
+    background: var(--accent-100);
+    border-color: var(--accent-300);
+    transform: translateY(-1px);
+}
+
+[data-theme="dark"] .tag.clickable:hover {
+    background: rgba(14, 165, 233, 0.15);
+    border-color: var(--accent-400);
+}
+
+/* Enhanced Action Buttons */
+.action-btn.action-view {
+    background: var(--accent-50);
+    color: var(--accent-700);
+    border: 1px solid var(--accent-200);
+}
+
+.action-btn.action-view:hover {
+    background: var(--accent-100);
+    border-color: var(--accent-300);
+}
+
+[data-theme="dark"] .action-btn.action-view {
+    background: rgba(14, 165, 233, 0.1);
+    color: var(--accent-300);
+    border-color: rgba(14, 165, 233, 0.2);
+}
+
+[data-theme="dark"] .action-btn.action-view:hover {
+    background: rgba(14, 165, 233, 0.2);
+    border-color: var(--accent-400);
+}
+
+/* Modal Styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 1rem;
+}
+
+.modal-content {
+    background: var(--gray-50);
+    border-radius: 0.75rem;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    max-width: 90vw;
+    max-height: 90vh;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+[data-theme="dark"] .modal-content {
+    background: var(--gray-800);
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--gray-200);
+    flex-shrink: 0;
+}
+
+[data-theme="dark"] .modal-header {
+    border-bottom-color: var(--gray-700);
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: var(--gray-900);
+    font-size: var(--text-xl);
+    font-weight: 600;
+}
+
+[data-theme="dark"] .modal-header h3 {
+    color: var(--gray-100);
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: var(--text-2xl);
+    color: var(--gray-400);
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 0.375rem;
+    transition: color 0.2s ease;
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-close:hover {
+    color: var(--gray-600);
+}
+
+[data-theme="dark"] .modal-close:hover {
+    color: var(--gray-300);
+}
+
+.modal-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.modal-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--gray-200);
+    display: flex;
+    justify-content: flex-end;
+    flex-shrink: 0;
+}
+
+[data-theme="dark"] .modal-footer {
+    border-top-color: var(--gray-700);
+}
+
+/* Works List in Modal */
+.works-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.work-item {
+    background: var(--gray-100);
+    border: 1px solid var(--gray-200);
+    border-radius: 0.5rem;
+    padding: 1rem;
+}
+
+[data-theme="dark"] .work-item {
+    background: var(--gray-700);
+    border-color: var(--gray-600);
+}
+
+.work-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.work-header strong {
+    color: var(--gray-900);
+    font-size: var(--text-lg);
+}
+
+[data-theme="dark"] .work-header strong {
+    color: var(--gray-100);
+}
+
+.work-type {
+    background: var(--primary-100);
+    color: var(--primary-700);
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: var(--text-xs);
+    font-weight: 500;
+}
+
+[data-theme="dark"] .work-type {
+    background: var(--primary-800);
+    color: var(--primary-300);
+}
+
+.work-year {
+    color: var(--gray-500);
+    font-size: var(--text-sm);
+}
+
+[data-theme="dark"] .work-year {
+    color: var(--gray-400);
+}
+
+.work-author {
+    color: var(--gray-600);
+    font-size: var(--text-sm);
+    font-style: italic;
+    margin-bottom: 0.75rem;
+}
+
+[data-theme="dark"] .work-author {
+    color: var(--gray-300);
+}
+
+.examples {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.example-item {
+    background: var(--gray-50);
+    border: 1px solid var(--gray-200);
+    border-radius: 0.375rem;
+    padding: 0.75rem;
+}
+
+[data-theme="dark"] .example-item {
+    background: var(--gray-800);
+    border-color: var(--gray-600);
+}
+
+.example-description {
+    color: var(--gray-800);
+    font-size: var(--text-sm);
+    line-height: 1.5;
+    margin-bottom: 0.5rem;
+}
+
+[data-theme="dark"] .example-description {
+    color: var(--gray-200);
+}
+
+.example-reference {
+    color: var(--gray-500);
+    font-size: var(--text-xs);
+    font-weight: 500;
+}
+
+[data-theme="dark"] .example-reference {
+    color: var(--gray-400);
+}
+
+/* Enhanced Item Meta Layout */
+.item-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+/* Responsive Modal */
+@media (max-width: 768px) {
+    .modal-content {
+        max-width: 95vw;
+        max-height: 95vh;
+        margin: 0.5rem;
+    }
+    
+    .modal-header,
+    .modal-body,
+    .modal-footer {
+        padding: 1rem;
+    }
+    
+    .work-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+
 /* Reduced Motion Support */
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {

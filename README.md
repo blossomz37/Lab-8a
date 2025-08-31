@@ -32,15 +32,17 @@ gunicorn --bind 0.0.0.0:8000 app:app --daemon
 - Web Interface: http://localhost:8000
 - API Documentation: http://localhost:8000/api
 
-## ✅ Current Features (Phase 4.1 Complete)
+## ✅ Current Features (Phase 5.1 Complete - v2.0)
 
-- 🔍 **Full-text Search**: Search across 153 tropes and 23 categories
-- � **Browse Tropes**: View all tropes with category associations
-- �️ **Category Management**: Organized by genre categories
-- ➕ **Create Tropes**: Full trope creation with category support via API
-- 📱 **Responsive Web Interface**: Clean, functional design
-- 🔒 **Local Database**: SQLite with 153 pre-loaded tropes
-- ⚡ **Production Ready**: Gunicorn server deployment
+- 🔍 **Advanced Search**: Full-text search across 155 tropes with performance optimization
+- 📚 **Complete CRUD**: Tropes, Categories, Works, and Examples with rich relationships
+- 🔗 **Smart Navigation**: Clickable categories, relationship indicators, cross-reference modals
+- 🎨 **Professional UI**: Winter theme with dark/light mode toggle and status monitoring
+- 📊 **Analytics Dashboard**: Real-time statistics and data visualization
+- 📤 **Data Export**: One-click CSV export with smart filtering
+- ⚡ **High Performance**: Database indexes for optimal query speed
+- 📱 **Responsive Design**: WCAG 2.1 AA compliant, mobile-optimized
+- 🔒 **Local Database**: SQLite with 155 tropes, 23 categories, 5+ works
 
 ## 🛠️ Technical Architecture
 
@@ -51,21 +53,38 @@ gunicorn --bind 0.0.0.0:8000 app:app --daemon
 - **API**: RESTful JSON endpoints
 
 **Database:**
-- **153 Tropes** with full descriptions and category associations
-- **23 Categories** (Romance, Dark Romance, Paranormal, etc.)
-- **Many-to-many relationships** between tropes and categories
+- **155 Tropes** with relationship counts and cross-reference navigation
+- **23 Categories** with clickable filtering and smart navigation
+- **5+ Works** with complete metadata and trope relationships
+- **Multiple Examples** linking tropes to works with rich context
+- **Performance Optimized** with strategic database indexes
 
-## 📡 API Endpoints
+## 📡 API Endpoints (v2.0)
 
-### Read Operations
-- `GET /api/` - API documentation
-- `GET /api/tropes` - List all tropes (153 total)
-- `GET /api/tropes/<id>` - Individual trope details
-- `GET /api/categories` - List all categories (23 total)
-- `GET /api/search?q=<query>` - Full-text search
+### Core Operations
+- `GET /api/` - API documentation and health status
+- `GET /api/tropes` - List all tropes with relationship counts
+- `GET /api/tropes/<id>` - Individual trope with related works and examples
+- `GET /api/categories` - List all categories with trope counts
+- `GET /api/search?q=<query>` - Advanced full-text search
+- `GET /api/analytics` - Real-time database statistics
+- `GET /api/export/csv` - Export data as CSV
 
-### Write Operations ✅ NEW
+### Works & Examples
+- `GET /api/works` - List all works with filtering
+- `POST /api/works` - Create new work entries
+- `GET /api/works/<id>` - Work details with associated tropes
+- `GET /api/examples` - List all trope-work relationships
+- `POST /api/examples` - Create trope-work links
+
+### Cross-Reference Navigation (New in v2.0)
+- `GET /api/tropes/<id>/works` - Get all works using a specific trope
+- `GET /api/works/<id>/tropes` - Get all tropes used in a specific work
+
+### Write Operations
 - `POST /api/tropes` - Create new trope with categories
+- `PUT /api/tropes/<id>` - Update existing tropes
+- `DELETE /api/tropes/<id>` - Delete tropes with confirmation
 
 **Create Trope Example:**
 ```bash
@@ -144,8 +163,8 @@ Lab-8a/
    # Option 1: Using the startup script (recommended)
    ./scripts/start_server.sh
    
-   # Option 2: Using development helper
-   python dev.py start
+   # Option 2: Using smart development server (recommended)
+   python scripts/dev_server.py start
    
    # Option 3: Using Makefile
    make start
@@ -184,46 +203,39 @@ The application uses SQLite with the following schema:
 - **categories**: Genre categories
 - **trope_categories**: Many-to-many relationship table
 
-Current data includes **148 tropes** across **23 categories**.
+Current data includes **155 tropes** with relationship counts, **23 categories**, **5+ works**, and **comprehensive cross-references**.
 
 ## Development
 
 ### Running Tests
 ```bash
-# Run all tests
-python tests/run_tests.py
+# Using task runner (recommended)
+python scripts/dev_server.py test
 
-# Or run specific test files
+# Direct test running
+python tests/run_tests.py
 python -m pytest tests/test_api.py
 python -m pytest tests/test_improvements.py
 ```
 
 ### Project Phases
-- ✅ **Phase 1**: Backend API development
-- ✅ **Phase 2**: Web frontend implementation  
-- ✅ **Phase 2.5**: Enhanced UX features
-- ✅ **Phase 3**: Project organization and testing
+- ✅ **Phase 1-3**: Backend API, frontend implementation, testing
+- ✅ **Phase 4.1-4.5**: Complete CRUD operations, analytics, data export
+- ✅ **Phase 5.0**: Works and Examples management with full integration
+- ✅ **Phase 5.1**: Performance optimization and enhanced relationships (v2.0)
 
 ### Development Environment
-The project uses:
-- Flask 2.3.3 for the web framework
-- Flask-CORS for cross-origin requests
-- SQLite for data storage
-- Vanilla JavaScript for frontend interactivity
-- Responsive CSS Grid for layout
-
-## API Endpoints
-
-- `GET /api/tropes` - Get all tropes
-- `GET /api/categories` - Get all categories
-- `GET /api/search?q=<query>&category=<category>` - Search tropes
-- `POST /api/tropes` - Create new trope
-- `PUT /api/tropes/<id>` - Update trope
-- `DELETE /api/tropes/<id>` - Delete trope
+- Flask 2.3.3 with 12 optimized API endpoints
+- SQLite with 5 strategic performance indexes  
+- Vanilla JavaScript with cross-reference navigation
+- Winter theme UI with dark/light mode toggle
+- Smart development server management
 
 ## Version History
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed version history and release notes.
+
+**Current Version: 2.0** - Performance optimization and enhanced relationships complete
 
 ## Contributing
 
@@ -232,18 +244,21 @@ See [CHANGELOG.md](CHANGELOG.md) for detailed version history and release notes.
 3. Update documentation as needed
 4. Test thoroughly before committing
 
-## Mission
+## Mission Statement
 
-From the project mission statement: *"Build a fast, private, and user-friendly local web application for managing personal writing tropes database, with a clean web interface for CRUD operations and powerful searching capabilities."*
+*"Build a fast, private, and user-friendly local web application for managing personal writing tropes database, with a clean web interface for CRUD operations and powerful searching capabilities."*
+
+**Mission Status: ✅ COMPLETE** - All core objectives achieved with Phase 5.1 enhancements
 
 ## Technical Notes
 
-- Categories display with underscores replaced by spaces and Title Case formatting
-- Search is optimized with both client-side and server-side filtering
-- All operations are local - no external API calls
-- Responsive design works on various screen sizes
-- Git repository included for version control
+- **Performance Optimized**: 5 strategic database indexes for fast queries
+- **Cross-Reference Navigation**: Professional modal system with relationship indicators  
+- **Winter Theme**: Dark/light mode toggle with consistent design language
+- **Smart Development Server**: Background process management with status monitoring
+- **Local-First**: All operations are private - no external API calls
+- **Responsive Design**: Works seamlessly across all screen sizes
 
 ---
 
-Last updated: January 2025
+**Lab-8a Trope Management System v2.0** | Last updated: January 2025

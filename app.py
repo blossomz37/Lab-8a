@@ -105,17 +105,27 @@ def get_tropes():
     try:
         conn = get_db_connection()
         
-        # Get all tropes with their associated categories
+        # Get all tropes with their associated categories and relationship counts
         query = """
         SELECT 
             t.id,
             t.name,
             t.description,
-            GROUP_CONCAT(c.name) as categories
+            GROUP_CONCAT(c.name) as categories,
+            COALESCE(example_stats.example_count, 0) as example_count,
+            COALESCE(example_stats.work_count, 0) as work_count
         FROM tropes t
         LEFT JOIN trope_categories tc ON t.id = tc.trope_id
         LEFT JOIN categories c ON tc.category_id = c.id
-        GROUP BY t.id, t.name, t.description
+        LEFT JOIN (
+            SELECT 
+                e.trope_id,
+                COUNT(*) as example_count,
+                COUNT(DISTINCT e.work_id) as work_count
+            FROM examples e
+            GROUP BY e.trope_id
+        ) example_stats ON t.id = example_stats.trope_id
+        GROUP BY t.id, t.name, t.description, example_stats.example_count, example_stats.work_count
         ORDER BY t.name
         """
         
@@ -305,6 +315,24 @@ def get_trope_detail(trope_id):
             WHERE tc.trope_id = ?
         """, (trope_id,)).fetchall()
         
+        # Get related examples with work information
+        examples = conn.execute("""
+            SELECT 
+                e.id,
+                e.description,
+                e.page_reference,
+                e.created_at,
+                w.id as work_id,
+                w.title as work_title,
+                w.type as work_type,
+                w.year as work_year,
+                w.author as work_author
+            FROM examples e
+            JOIN works w ON e.work_id = w.id
+            WHERE e.trope_id = ?
+            ORDER BY w.title
+        """, (trope_id,)).fetchall()
+        
         conn.close()
         
         # Build response
@@ -315,6 +343,45 @@ def get_trope_detail(trope_id):
                 'name': format_category_name(cat['name'])
             } for cat in [dict_from_row(cat) for cat in categories]
         ]
+        
+        # Add examples with work details
+        result['examples'] = []
+        result['related_works'] = []
+        work_ids_seen = set()
+        
+        for example in examples:
+            example_dict = dict_from_row(example)
+            result['examples'].append({
+                'id': example_dict['id'],
+                'description': example_dict['description'],
+                'page_reference': example_dict['page_reference'],
+                'created_at': example_dict['created_at'],
+                'work': {
+                    'id': example_dict['work_id'],
+                    'title': example_dict['work_title'],
+                    'type': example_dict['work_type'],
+                    'year': example_dict['work_year'],
+                    'author': example_dict['work_author']
+                }
+            })
+            
+            # Add to related works (avoid duplicates)
+            if example_dict['work_id'] not in work_ids_seen:
+                work_ids_seen.add(example_dict['work_id'])
+                result['related_works'].append({
+                    'id': example_dict['work_id'],
+                    'title': example_dict['work_title'],
+                    'type': example_dict['work_type'],
+                    'year': example_dict['work_year'],
+                    'author': example_dict['work_author']
+                })
+        
+        # Add summary counts
+        result['stats'] = {
+            'example_count': len(result['examples']),
+            'work_count': len(result['related_works']),
+            'category_count': len(result['categories'])
+        }
         
         return jsonify(result)
         
@@ -986,6 +1053,145 @@ def get_work(work_id):
         work_data['trope_count'] = len(examples)
         
         return jsonify(work_data)
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/tropes/<trope_id>/works')
+def get_trope_works(trope_id):
+    """Get all works that use a specific trope"""
+    try:
+        conn = get_db_connection()
+        
+        # Verify trope exists
+        trope = conn.execute("SELECT name FROM tropes WHERE id = ?", (trope_id,)).fetchone()
+        if not trope:
+            conn.close()
+            return jsonify({"error": "Trope not found"}), 404
+        
+        # Get works with example details
+        query = """
+        SELECT 
+            w.id,
+            w.title,
+            w.type,
+            w.year,
+            w.author,
+            w.description,
+            e.id as example_id,
+            e.description as example_description,
+            e.page_reference,
+            e.created_at as example_created_at
+        FROM works w
+        JOIN examples e ON w.id = e.work_id
+        WHERE e.trope_id = ?
+        ORDER BY w.title
+        """
+        
+        results = conn.execute(query, (trope_id,)).fetchall()
+        conn.close()
+        
+        # Group by work
+        works_dict = {}
+        for row in results:
+            row_dict = dict_from_row(row)
+            work_id = row_dict['id']
+            
+            if work_id not in works_dict:
+                works_dict[work_id] = {
+                    'id': work_id,
+                    'title': row_dict['title'],
+                    'type': row_dict['type'],
+                    'year': row_dict['year'],
+                    'author': row_dict['author'],
+                    'description': row_dict['description'],
+                    'examples': []
+                }
+            
+            works_dict[work_id]['examples'].append({
+                'id': row_dict['example_id'],
+                'description': row_dict['example_description'],
+                'page_reference': row_dict['page_reference'],
+                'created_at': row_dict['example_created_at']
+            })
+        
+        return jsonify({
+            'trope_name': trope['name'],
+            'trope_id': trope_id,
+            'works': list(works_dict.values()),
+            'work_count': len(works_dict)
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/works/<work_id>/tropes')
+def get_work_tropes(work_id):
+    """Get all tropes used in a specific work"""
+    try:
+        conn = get_db_connection()
+        
+        # Verify work exists
+        work = conn.execute("SELECT title FROM works WHERE id = ?", (work_id,)).fetchone()
+        if not work:
+            conn.close()
+            return jsonify({"error": "Work not found"}), 404
+        
+        # Get tropes with example details
+        query = """
+        SELECT 
+            t.id,
+            t.name,
+            t.description,
+            GROUP_CONCAT(c.name) as categories,
+            e.id as example_id,
+            e.description as example_description,
+            e.page_reference,
+            e.created_at as example_created_at
+        FROM tropes t
+        LEFT JOIN trope_categories tc ON t.id = tc.trope_id
+        LEFT JOIN categories c ON tc.category_id = c.id
+        JOIN examples e ON t.id = e.trope_id
+        WHERE e.work_id = ?
+        GROUP BY t.id, t.name, t.description, e.id, e.description, e.page_reference, e.created_at
+        ORDER BY t.name
+        """
+        
+        results = conn.execute(query, (work_id,)).fetchall()
+        conn.close()
+        
+        # Group by trope
+        tropes_dict = {}
+        for row in results:
+            row_dict = dict_from_row(row)
+            trope_id = row_dict['id']
+            
+            if trope_id not in tropes_dict:
+                # Format categories
+                categories = []
+                if row_dict['categories']:
+                    category_names = row_dict['categories'].split(',')
+                    categories = [format_category_name(cat) for cat in category_names]
+                
+                tropes_dict[trope_id] = {
+                    'id': trope_id,
+                    'name': row_dict['name'],
+                    'description': row_dict['description'],
+                    'categories': categories,
+                    'example': {
+                        'id': row_dict['example_id'],
+                        'description': row_dict['example_description'],
+                        'page_reference': row_dict['page_reference'],
+                        'created_at': row_dict['example_created_at']
+                    }
+                }
+        
+        return jsonify({
+            'work_title': work['title'],
+            'work_id': work_id,
+            'tropes': list(tropes_dict.values()),
+            'trope_count': len(tropes_dict)
+        })
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500

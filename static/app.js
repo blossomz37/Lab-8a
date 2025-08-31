@@ -473,10 +473,17 @@ class TropeApp {
                                 ${this.escapeHtml(trope.description || '').substring(0, 150)}${trope.description && trope.description.length > 150 ? '...' : ''}
                             </div>
                             <div class="item-meta">
-                                ${trope.categories.map(cat => `<span class="tag category">${this.escapeHtml(cat)}</span>`).join('')}
+                                <div class="category-tags">
+                                    ${trope.categories.map(cat => `<span class="tag category clickable" onclick="app.filterByCategory('${this.escapeHtml(cat)}'); event.stopPropagation();" title="Filter by ${this.escapeHtml(cat)}">${this.escapeHtml(cat)}</span>`).join('')}
+                                </div>
+                                <div class="relationship-stats">
+                                    ${trope.work_count > 0 ? `<span class="stat-item" title="Appears in ${trope.work_count} work${trope.work_count !== 1 ? 's' : ''}">📚 ${trope.work_count} work${trope.work_count !== 1 ? 's' : ''}</span>` : ''}
+                                    ${trope.example_count > 0 ? `<span class="stat-item" title="${trope.example_count} example${trope.example_count !== 1 ? 's' : ''} recorded">🔗 ${trope.example_count} example${trope.example_count !== 1 ? 's' : ''}</span>` : ''}
+                                </div>
                             </div>
                         </div>
                         <div class="item-actions">
+                            ${trope.work_count > 0 ? `<button class="action-btn action-view" onclick="app.viewTropeWorks('${trope.id}'); event.stopPropagation();" aria-label="View works using this trope" title="View works">📚</button>` : ''}
                             <button class="action-btn action-edit" onclick="app.editTrope('${trope.id}'); event.stopPropagation();" aria-label="Edit trope">
                                 ✏️
                             </button>
@@ -1858,6 +1865,92 @@ TropeApp.prototype.checkConnectionStatus = function() {
         statusDot.classList.remove('connecting', 'connected');
         statusDot.classList.add('disconnected');
     });
+};
+
+// Filter tropes by category
+TropeApp.prototype.filterByCategory = function(categoryName) {
+    // Set the category filter in the controls
+    const categorySelect = document.getElementById('categoryFilter');
+    if (categorySelect) {
+        // Find the option that matches the category name
+        for (let option of categorySelect.options) {
+            if (option.text === categoryName) {
+                option.selected = true;
+                break;
+            }
+        }
+    }
+    
+    // Apply the filter
+    this.applyFilters();
+    
+    // Show tropes section if not already showing
+    this.showSection('tropes');
+};
+
+// View works that use a specific trope
+TropeApp.prototype.viewTropeWorks = async function(tropeId) {
+    try {
+        const response = await fetch(`/api/tropes/${tropeId}/works`);
+        if (response.ok) {
+            const data = await response.json();
+            
+            // Create a modal or section to show the works
+            this.showTropeWorksModal(data);
+        } else {
+            console.error('Failed to fetch trope works');
+            alert('Failed to load related works');
+        }
+    } catch (error) {
+        console.error('Error fetching trope works:', error);
+        alert('Error loading related works');
+    }
+};
+
+// Show modal with works using a trope
+TropeApp.prototype.showTropeWorksModal = function(data) {
+    // Create modal HTML
+    const modalHtml = `
+        <div class="modal-overlay" onclick="this.remove()">
+            <div class="modal-content" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <h3>Works Using: ${this.escapeHtml(data.trope_name)}</h3>
+                    <button class="modal-close" onclick="this.parentElement.parentElement.parentElement.remove()">×</button>
+                </div>
+                <div class="modal-body">
+                    ${data.works.length === 0 ? 
+                        '<p>No works found using this trope.</p>' :
+                        `<div class="works-list">
+                            ${data.works.map(work => `
+                                <div class="work-item">
+                                    <div class="work-header">
+                                        <strong>${this.escapeHtml(work.title)}</strong>
+                                        <span class="work-type">(${this.escapeHtml(work.type)})</span>
+                                        ${work.year ? `<span class="work-year">${work.year}</span>` : ''}
+                                    </div>
+                                    ${work.author ? `<div class="work-author">by ${this.escapeHtml(work.author)}</div>` : ''}
+                                    <div class="examples">
+                                        ${work.examples.map(example => `
+                                            <div class="example-item">
+                                                <div class="example-description">${this.escapeHtml(example.description)}</div>
+                                                ${example.page_reference ? `<div class="example-reference">Reference: ${this.escapeHtml(example.page_reference)}</div>` : ''}
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>`
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button onclick="this.parentElement.parentElement.parentElement.remove()" class="btn btn-secondary">Close</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Add modal to DOM
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
 };
 
 // Initialize the app when the page loads
