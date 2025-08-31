@@ -5,36 +5,93 @@ All notable changes to the Tropes Manager project will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2025-08-30 (Phase 5.1 - Performance & Enhanced Relationships) ✅
+
+### 🚀 Major Release: Performance Optimization & Cross-Reference Navigation
+
+### Added - Database Performance
+- **5 Strategic Database Indexes**: Comprehensive indexing for optimal query performance
+  - `idx_tropes_name` - Optimizes sorting and basic searches
+  - `idx_tropes_name_lower` - Speeds up case-insensitive search queries  
+  - `idx_categories_name` - Accelerates category filtering operations
+  - `idx_trope_categories_trope_id` - Optimizes relationship lookups
+  - `idx_trope_categories_category_id` - Speeds up reverse relationship queries
+- **Enhanced API Responses**: All trope queries now include `work_count` and `example_count` statistics
+- **Relationship Aggregation**: SQL queries enhanced with JOINs for comprehensive relationship data
+
+### Added - Cross-Reference Navigation System
+- **New API Endpoints**:
+  - `GET /api/tropes/{id}/works` - Get all works using a specific trope with example details
+  - `GET /api/works/{id}/tropes` - Get all tropes used in a specific work with example context
+- **Professional Modal System**: Rich cross-reference viewing with responsive design
+- **Clickable Category Tags**: Instant filtering via category tags with hover effects
+- **Relationship Indicators**: Visual statistics (📚 X works, 🔗 X examples) on trope cards
+
+### Added - Frontend Enhancements
+- **Enhanced Navigation Methods**:
+  - `filterByCategory()` - One-click category filtering
+  - `viewTropeWorks()` - Cross-reference exploration
+  - `showTropeWorksModal()` - Professional modal display
+- **200+ Lines of CSS**: Complete styling system for modals, relationships, and interactions
+- **Action Button Enhancement**: Added "View Works" buttons for tropes with examples
+- **Dark/Light Theme Support**: All new elements fully support existing theme system
+
+### Changed - User Experience
+- **At-a-Glance Awareness**: Relationship counts visible on all trope cards
+- **One-Click Navigation**: Category filtering via clickable tags
+- **Rich Cross-References**: Professional modal system replaces basic links
+- **Smooth Interactions**: Enhanced hover states and micro-interactions
+
+### Technical Improvements
+- **API Version**: Enhanced to support 12 total endpoints with relationship data
+- **Database Optimization**: Query performance improved across all major operations
+- **Accessibility**: Modal system includes proper ARIA labels and keyboard navigation
+- **Responsive Design**: All new components work seamlessly across screen sizes
+
+### Files Modified
+- `scripts/add_performance_indexes.sql` - Database index definitions
+- `app.py` - Enhanced APIs with relationship counts and 2 new endpoints
+- `static/app.js` - Added cross-reference navigation methods and enhanced UI
+- `static/style.css` - 200+ lines of CSS for modals, relationships, and interactions
+
+## [1.5.0] - 2025-08-30 (Phase 5.0 - Works & Examples Management) ✅
+
+### 🎯 Complete Works & Examples Integration
+
+### Added - Database Schema & APIs
+- **Works Management**: Complete CRUD operations for books, films, TV shows
+- **Examples System**: Trope-work relationship management with rich context
+- **Foreign Key Constraints**: CASCADE deletion for data integrity
+- **Sample Data**: Dune, The Matrix, Breaking Bad with example relationships
+
+### Added - Frontend Integration
+- **8 New JavaScript Methods**: Complete UI implementation (280+ lines)
+- **Dynamic Forms**: Smart validation and dropdown population
+- **Professional Card Layouts**: Consistent winter theme across all sections
+- **Export Enhancement**: CSV export for works and examples with smart filtering
+
+### Added - User Experience
+- **Edit Form Positioning**: Forms appear at top with auto-scroll for immediate visibility
+- **Theme Integration**: Dark/light theme toggle with status indicators
+- **Comprehensive Export**: One-click CSV export for all data types
+- **Enhanced Navigation**: Seamless flow between tropes, works, and examples
+
+### Technical Achievements
+- **10+ API Endpoints**: Complete CRUD for all data types
+- **Smart Server Management**: Background process with PID tracking
+- **Performance Indexes**: Optimized queries for common operations
+- **Form Validation**: Comprehensive client and server-side validation
+
 ## [Unreleased]
 
-### Added - Phase 4.4: Enhanced User Experience ✅
-- **Advanced Sorting**: GET /api/tropes now supports `sort` (name/description) and `order` (asc/desc) parameters
-- **Category Filtering**: GET /api/tropes supports `filter_category` parameter for server-side filtering
-- **UI Controls**: Added sorting dropdowns and category filter dropdown to tropes section
-- **Results Counter**: Dynamic display showing "X tropes" based on current filters
-- **Responsive Controls**: Mobile-optimized control layout with proper winter theme integration
-- **Enhanced API Response**: API now returns sort_by, sort_order, and filter_category in response
-
-### Technical Improvements - Phase 4.4
-- Enhanced `loadData()` method in app.js supports URL parameters for sorting/filtering
-- Added `setupControls()`, `handleControlChange()`, and `updateResultsCount()` methods
-- New CSS section `.controls-section` with responsive design and winter theme consistency  
-- SQL query optimization with parameter validation and injection prevention
-- Maintained backward compatibility with existing API consumers
-
-### Added - Previous Releases
-- Continuous Integration: GitHub Actions workflow at `.github/workflows/ci.yml` to run tests on push and pull requests.
-- Development helper: `Makefile` with `setup`, `test`, and `clean` targets for quick onboarding.
-- Dev Container: `.devcontainer/` configuration (Dockerfile + `devcontainer.json`) that creates a project-local `.venv` and forwards port 8000.
-- Test helper script: `scripts/run_tests.sh` - creates `.venv`, installs runtime and test deps, runs pytest.
-- VS Code task: `.vscode/tasks.json` providing a "Run Tests (venv)" task that invokes the test helper.
-- Documentation: `CONTRIBUTING.md` and a "For students" section added to `README.md` describing the recommended workflow.
-
-### Changed
-- README: added a CI status badge and a short "For students" quick-start section.
+### Planned Features - Phase 5.2
+- Bulk operations for batch data management
+- Data visualization with charts and graphs  
+- Advanced search with filters and sorting
+- Export/import enhancements
 
 
-## [Phase 4.3 Enhanced] - 2025-08-29
+## [1.1.0] - 2025-08-29 (Phase 4.3 - CRUD Operations & Winter Theme) ✅
 
 ### 🎨 Major UI/UX Overhaul
 - **BREAKING**: Complete visual redesign with professional winter theme
@@ -293,11 +350,34 @@ Lab-8a/
 - Testing infrastructure
 - Build and deployment setup
 
-### Future Phases (Roadmap)
-- **Phase 4**: Full CRUD Operations
-- **Phase 5**: Advanced Features  
-- **Phase 6**: Performance & Scaling
-- **Phase 7**: Polish & Distribution
+### Phase 4.1-4.3: Complete CRUD Operations ✅
+- Full trope creation, editing, and deletion
+- Professional winter theme implementation
+- WCAG 2.1 AA accessibility compliance
+- Icon-based UI with hover tooltips
+
+### Phase 4.4-4.5: Enhanced Features & Analytics ✅
+- Advanced sorting and filtering
+- Real-time analytics dashboard
+- CSV export functionality
+- Popular categories visualization
+
+### Phase 5.0: Works & Examples Management ✅
+- Complete works database with CRUD operations
+- Examples system for trope-work relationships
+- Frontend integration with professional UI
+- Export functionality for all data types
+
+### Phase 5.1: Performance & Enhanced Relationships ✅ (v2.0)
+- Database performance optimization (5 strategic indexes)
+- Cross-reference navigation with modal system
+- Relationship indicators and clickable categories
+- Professional UI enhancements
+
+### Future Phases Available
+- **Phase 5.2**: Bulk Operations & Data Visualization
+- **Phase 6**: Advanced Search & Filtering
+- **Phase 7**: Performance & Scaling Enhancements
 
 ---
 
