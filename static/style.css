@@ -39,6 +39,15 @@
     --gray-800: #1e293b;
     --gray-900: #0f172a;
     
+    /* Typography Scale */
+    --text-xs: 0.75rem;
+    --text-sm: 0.875rem;
+    --text-base: 1rem;
+    --text-lg: 1.125rem;
+    --text-xl: 1.25rem;
+    --text-2xl: 1.5rem;
+    --text-3xl: 1.875rem;
+    
     /* Spacing Scale */
     --space-1: 0.25rem;
     --space-2: 0.5rem;
@@ -48,19 +57,63 @@
     --space-6: 1.5rem;
     --space-8: 2rem;
     
-    /* Typography Scale */
-    --text-xs: 0.75rem;
-    --text-sm: 0.875rem;
-    --text-base: 1rem;
-    --text-lg: 1.125rem;
-    --text-xl: 1.25rem;
-    --text-2xl: 1.5rem;
-    
     /* Shadows */
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     --shadow-base: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Dark Theme Variables */
+[data-theme="dark"] {
+    --primary-50: #0f172a;
+    --primary-100: #1e293b;
+    --primary-500: #64748b;
+    --primary-600: #94a3b8;
+    --primary-700: #cbd5e1;
+    
+    --accent-50: #0c1426;
+    --accent-100: #1e293b;
+    --accent-500: #0ea5e9;
+    --accent-600: #38bdf8;
+    --accent-700: #7dd3fc;
+    
+    --gray-50: #0f172a;
+    --gray-100: #1e293b;
+    --gray-200: #334155;
+    --gray-300: #475569;
+    --gray-400: #64748b;
+    --gray-500: #94a3b8;
+    --gray-600: #cbd5e1;
+    --gray-700: #e2e8f0;
+    --gray-800: #f1f5f9;
+    --gray-900: #f8fafc;
+}
+
+/* Dark Theme Variables */
+[data-theme="dark"] {
+    --primary-50: #0f172a;
+    --primary-100: #1e293b;
+    --primary-500: #64748b;
+    --primary-600: #94a3b8;
+    --primary-700: #cbd5e1;
+    
+    --accent-50: #0c1426;
+    --accent-100: #1e293b;
+    --accent-500: #0ea5e9;
+    --accent-600: #38bdf8;
+    --accent-700: #7dd3fc;
+    
+    --gray-50: #0f172a;
+    --gray-100: #1e293b;
+    --gray-200: #334155;
+    --gray-300: #475569;
+    --gray-400: #64748b;
+    --gray-500: #94a3b8;
+    --gray-600: #cbd5e1;
+    --gray-700: #e2e8f0;
+    --gray-800: #f1f5f9;
+    --gray-900: #f8fafc;
 }
 
 /* Reset and Base Styles */
@@ -121,6 +174,103 @@ body {
     opacity: 0.9;
     font-size: var(--text-lg);
     font-weight: 400;
+}
+
+/* Header Layout */
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    z-index: 1;
+}
+
+.header-text {
+    flex: 1;
+}
+
+/* Header Controls */
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+/* Theme Toggle */
+.theme-toggle {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    border-radius: 6px;
+    padding: var(--space-2);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    line-height: 1;
+}
+
+.theme-toggle:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+}
+
+/* Status Indicator - Discrete */
+.status-indicator {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    padding: var(--space-2);
+    border-radius: 50%;
+    transition: background-color 0.2s ease;
+}
+
+.status-indicator:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+    background: #64748b; /* Default grey */
+}
+
+.status-dot.connected {
+    background: #10b981; /* Green */
+}
+
+.status-dot.connecting {
+    background: #f59e0b; /* Yellow */
+    animation: pulse-subtle 2s infinite;
+}
+
+.status-dot.disconnected {
+    background: #64748b; /* Grey */
+}
+
+/* Subtle pulse animation for connecting state */
+@keyframes pulse-subtle {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .header-content {
+        flex-direction: column;
+        gap: var(--space-4);
+        text-align: center;
+    }
+    
+    .status-indicator {
+        min-width: auto;
+        justify-content: center;
+    }
 }
 
 /* Navigation - Winter Theme */

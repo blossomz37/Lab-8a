@@ -16,11 +16,16 @@ class TropeApp {
             examples: []
         };
         
+        // Network and status monitoring - simple
+        this.statusCheckTime = null;
+        this.statusTimer = null;
+        
         this.init();
     }
     
     async init() {
         this.setupEventListeners();
+        this.setupStatusIndicator();
         await this.loadData();
         this.setupControls();
         this.showSection('tropes');
@@ -77,6 +82,162 @@ class TropeApp {
             }
         });
     }
+    
+    // ================================
+    // Status Monitoring System
+    // ================================
+    
+    initializeStatusMonitoring() {
+        // Set up online/offline event listeners
+        window.addEventListener('online', () => {
+            this.isOnline = true;
+            this.updateStatus('connecting', 'Connection restored, checking server...');
+            this.checkServerHealth();
+        });
+        
+        window.addEventListener('offline', () => {
+            this.isOnline = false;
+            this.updateStatus('disconnected', 'No internet connection');
+            this.clearHealthCheckInterval();
+        });
+        
+        // Initial status check
+        this.updateStatus('connecting', 'Initializing...');
+        this.checkServerHealth();
+        
+        // Set up periodic health checks (every 30 seconds)
+        this.healthCheckInterval = setInterval(() => {
+            if (this.isOnline && this.requestQueue.size === 0) {
+                this.checkServerHealth(true); // Silent check
+            }
+        }, 30000);
+    }
+    
+    async checkServerHealth(silent = false) {
+        if (!this.isOnline) {
+            this.updateStatus('disconnected', 'Offline');
+            return false;
+        }
+        
+        if (!silent) {
+            this.updateStatus('connecting', 'Checking server...');
+        }
+        
+        try {
+            const startTime = performance.now();
+            
+            // Create timeout handling for better browser compatibility
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
+            
+            const response = await fetch('/api', {
+                method: 'GET',
+                headers: { 'Cache-Control': 'no-cache' },
+                signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+            const endTime = performance.now();
+            const responseTime = Math.round(endTime - startTime);
+            
+            if (response.ok) {
+                const data = await response.json();
+                this.lastHealthCheck = {
+                    timestamp: new Date(),
+                    responseTime: responseTime,
+                    databaseStats: data.database_info
+                };
+                
+                const statusText = `Connected (${responseTime}ms)`;
+                const details = `${data.database_info.tropes}T | ${data.database_info.categories}C | ${data.database_info.works}W | ${data.database_info.examples}E`;
+                
+                this.updateStatus('connected', statusText, details);
+                this.serverStatus = 'connected';
+                return true;
+            } else {
+                throw new Error(`Server responded with ${response.status}`);
+            }
+        } catch (error) {
+            console.warn('Health check failed:', error.message);
+            this.updateStatus('disconnected', 'Server unavailable', error.message);
+            this.serverStatus = 'disconnected';
+            return false;
+        }
+    }
+    
+    updateStatus(status, text, details = '') {
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+        const statusDetails = document.getElementById('statusDetails');
+        
+        if (statusDot && statusText && statusDetails) {
+            // Remove all status classes
+            statusDot.classList.remove('connected', 'connecting', 'disconnected');
+            statusDot.classList.add(status);
+            
+            statusText.textContent = text;
+            statusDetails.textContent = details;
+        }
+    }
+    
+    clearHealthCheckInterval() {
+        if (this.healthCheckInterval) {
+            clearInterval(this.healthCheckInterval);
+            this.healthCheckInterval = null;
+        }
+    }
+    
+    // Enhanced fetch wrapper with status tracking
+    async fetchWithStatus(url, options = {}) {
+        const requestId = Date.now() + Math.random();
+        this.requestQueue.add(requestId);
+        
+        try {
+            // Show loading state for user-initiated requests
+            if (!options.silent) {
+                this.updateStatus('connecting', 'Loading...');
+            }
+            
+            // Create timeout for better browser compatibility
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), options.timeout || 10000);
+            
+            const response = await fetch(url, {
+                ...options,
+                signal: options.signal || controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+            
+            this.requestQueue.delete(requestId);
+            
+            if (response.ok) {
+                // Update to connected if we weren't already
+                if (this.serverStatus !== 'connected') {
+                    this.checkServerHealth(true);
+                }
+                return response;
+            } else {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+        } catch (error) {
+            this.requestQueue.delete(requestId);
+            
+            if (error.name === 'TimeoutError') {
+                this.updateStatus('connecting', 'Request timeout', 'Server is slow to respond');
+            } else if (error.name === 'TypeError') {
+                this.updateStatus('disconnected', 'Connection failed', 'Cannot reach server');
+            } else {
+                this.updateStatus('disconnected', 'Request failed', error.message);
+            }
+            
+            throw error;
+        }
+    }
+    
+    // ================================
+    // End Status Monitoring System
+    // ================================
     
     async loadData(sortBy = 'name', sortOrder = 'asc', filterCategory = '') {
         this.showLoading();
@@ -1625,6 +1786,79 @@ class TropeApp {
         }
     }
 }
+
+// Simple status indicator functionality
+TropeApp.prototype.setupStatusIndicator = function() {
+    // Theme toggle
+    const themeToggle = document.getElementById('themeToggle');
+    if (themeToggle) {
+        // Load saved theme or default to light
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        this.setTheme(savedTheme);
+        
+        themeToggle.addEventListener('click', () => {
+            const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            this.setTheme(newTheme);
+        });
+    }
+    
+    // Status indicator click handler
+    const statusIndicator = document.getElementById('statusIndicator');
+    if (statusIndicator) {
+        statusIndicator.addEventListener('click', () => {
+            this.checkConnectionStatus();
+        });
+    }
+    
+    // Initial connection check
+    this.checkConnectionStatus();
+};
+
+TropeApp.prototype.setTheme = function(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+    
+    const themeToggle = document.getElementById('themeToggle');
+    if (themeToggle) {
+        themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
+    }
+};
+
+TropeApp.prototype.checkConnectionStatus = function() {
+    const statusDot = document.getElementById('statusDot');
+    if (!statusDot) return;
+    
+    // Show connecting state
+    statusDot.classList.remove('connected', 'disconnected');
+    statusDot.classList.add('connecting');
+    
+    fetch('/api', {
+        method: 'GET',
+        headers: { 'Cache-Control': 'no-cache' }
+    })
+    .then(response => {
+        if (response.ok) {
+            // Connected - green
+            statusDot.classList.remove('connecting', 'disconnected');
+            statusDot.classList.add('connected');
+            
+            // Auto-expire after 60 seconds
+            if (this.statusTimer) clearTimeout(this.statusTimer);
+            this.statusTimer = setTimeout(() => {
+                statusDot.classList.remove('connected', 'connecting');
+                statusDot.classList.add('disconnected');
+            }, 60000);
+        } else {
+            throw new Error('Server error');
+        }
+    })
+    .catch(error => {
+        // Disconnected - grey
+        statusDot.classList.remove('connecting', 'connected');
+        statusDot.classList.add('disconnected');
+    });
+};
 
 // Initialize the app when the page loads
 let app;
