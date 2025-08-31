@@ -261,4 +261,4 @@ See [CHANGELOG.md](CHANGELOG.md) for detailed version history and release notes.
 
 ---
 
-**Lab-8a Trope Management System v2.0** | Last updated: January 2025
+**Lab-8a Trope Management System v2.0** | Last updated: August 30, 2025

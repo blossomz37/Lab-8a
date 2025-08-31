@@ -24,11 +24,24 @@ class TropeApp {
     }
     
     async init() {
-        this.setupEventListeners();
-        this.setupStatusIndicator();
-        await this.loadData();
-        this.setupControls();
-        this.showSection('tropes');
+        try {
+            this.setupEventListeners();
+            this.setupStatusIndicator();
+            await this.loadData();
+            this.setupControls();
+            this.showSection('tropes');
+            
+            // Setup AI listeners after DOM is ready
+            this.setupAIEventListeners();
+            
+            // Load AI status when on AI section
+            if (this.currentView === 'ai-assistant') {
+                this.loadAIStatus();
+            }
+        } catch (error) {
+            console.error('Error during initialization:', error);
+            // Continue with basic functionality even if AI features fail
+        }
     }
     
     setupEventListeners() {
@@ -365,6 +378,11 @@ class TropeApp {
             } else {
                 console.error(`Section ${section}Section not found`);
                 return;
+            }
+            
+            // Load AI status when showing AI section
+            if (section === 'ai-assistant') {
+                this.loadAIStatus();
             }
             
             // Update search placeholder based on section
@@ -1952,6 +1970,331 @@ TropeApp.prototype.showTropeWorksModal = function(data) {
     // Add modal to DOM
     document.body.insertAdjacentHTML('beforeend', modalHtml);
 };
+
+// ===== AI ASSISTANT FUNCTIONALITY =====
+
+TropeApp.prototype.setupAIEventListeners = function() {
+        try {
+            // AI Query functionality
+            const aiQueryBtn = document.getElementById('aiQueryBtn');
+            const aiQueryInput = document.getElementById('aiQueryInput');
+            
+            if (aiQueryBtn && aiQueryInput) {
+                aiQueryBtn.addEventListener('click', () => {
+                    this.handleAIQuery();
+                });
+                
+                aiQueryInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.handleAIQuery();
+                    }
+                });
+            }
+            
+            // Example query buttons
+            document.querySelectorAll('.example-query').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const query = e.target.dataset.query;
+                    const input = document.getElementById('aiQueryInput');
+                    if (input) {
+                        input.value = query;
+                        this.handleAIQuery();
+                    }
+                });
+            });
+            
+            // Book search functionality
+            const bookSearchBtn = document.getElementById('bookSearchBtn');
+            const bookSearchInput = document.getElementById('bookSearchInput');
+            
+            if (bookSearchBtn && bookSearchInput) {
+                bookSearchBtn.addEventListener('click', () => {
+                    this.handleBookSearch();
+                });
+                
+                bookSearchInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        this.handleBookSearch();
+                    }
+                });
+            }
+        } catch (error) {
+            console.warn('AI event listeners setup failed:', error);
+            // AI features will not be available, but app should continue working
+        }
+    };
+    
+    TropeApp.prototype.handleAIQuery = async function() {
+        const input = document.getElementById('aiQueryInput');
+        const resultsDiv = document.getElementById('aiQueryResults');
+        const query = input.value.trim();
+        
+        if (!query) {
+            this.showAIResults(resultsDiv, { success: false, error: 'Please enter a question' });
+            return;
+        }
+        
+        // Show loading state
+        resultsDiv.innerHTML = '<div class="ai-results loading">Asking AI...</div>';
+        
+        try {
+            const response = await fetch('/api/ai/query', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ query })
+            });
+            
+            const result = await response.json();
+            this.showAIResults(resultsDiv, result);
+            
+        } catch (error) {
+            console.error('AI Query Error:', error);
+            this.showAIResults(resultsDiv, { 
+                success: false, 
+                error: `Network error: ${error.message}` 
+            });
+        }
+    };
+    
+    TropeApp.prototype.showAIResults = function(container, result) {
+        if (!result.success) {
+            container.innerHTML = `
+                <div class="ai-results">
+                    <div class="ai-query-info" style="background: var(--danger-50); border-color: var(--danger-200); color: var(--danger-800);">
+                        ❌ Error: ${result.error}
+                    </div>
+                </div>
+            `;
+            return;
+        }
+        
+        const results = result.results || [];
+        const count = results.length;
+        
+        let html = `
+            <div class="ai-results">
+                <div class="ai-query-info">
+                    ✨ Found ${count} result${count !== 1 ? 's' : ''} • ${result.explanation}
+                </div>
+        `;
+        
+        if (count > 0) {
+            html += '<div class="ai-results-content">';
+            results.forEach(item => {
+                html += `
+                    <div class="ai-result-item">
+                        <div class="ai-result-title">${this.escapeHtml(item.name || item.title || 'Unknown')}</div>
+                        <div class="ai-result-description">${this.escapeHtml(item.description || item.content || 'No description available')}</div>
+                        ${item.categories ? `<div style="margin-top: 0.5rem;"><strong>Categories:</strong> ${this.escapeHtml(item.categories)}</div>` : ''}
+                        ${item.author ? `<div style="margin-top: 0.5rem;"><strong>Author:</strong> ${this.escapeHtml(item.author)}</div>` : ''}
+                    </div>
+                `;
+            });
+            html += '</div>';
+        } else {
+            html += '<div style="text-align: center; color: var(--gray-500); padding: 2rem;">No results found</div>';
+        }
+        
+        html += '</div>';
+        container.innerHTML = html;
+    };
+    
+    TropeApp.prototype.handleBookSearch = async function() {
+        const input = document.getElementById('bookSearchInput');
+        const resultsDiv = document.getElementById('bookSearchResults');
+        const query = input.value.trim();
+        
+        if (!query) {
+            resultsDiv.innerHTML = '<div style="text-align: center; color: var(--gray-500);">Please enter a book title to search</div>';
+            return;
+        }
+        
+        // Show loading state
+        resultsDiv.innerHTML = '<div class="ai-results loading">Searching books...</div>';
+        
+        try {
+            const response = await fetch(`/api/ai/books/search?q=${encodeURIComponent(query)}&limit=5`);
+            const result = await response.json();
+            
+            this.showBookResults(resultsDiv, result);
+            
+        } catch (error) {
+            console.error('Book Search Error:', error);
+            resultsDiv.innerHTML = `
+                <div style="background: var(--danger-50); border: 1px solid var(--danger-200); color: var(--danger-800); padding: 1rem; border-radius: 6px;">
+                    ❌ Search failed: ${error.message}
+                </div>
+            `;
+        }
+    };
+    
+    TropeApp.prototype.showBookResults = function(container, result) {
+        if (!result.success) {
+            container.innerHTML = `
+                <div style="background: var(--danger-50); border: 1px solid var(--danger-200); color: var(--danger-800); padding: 1rem; border-radius: 6px;">
+                    ❌ Error: ${result.error}
+                </div>
+            `;
+            return;
+        }
+        
+        const books = result.books || [];
+        const count = books.length;
+        
+        if (count === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; color: var(--gray-500); padding: 2rem;">
+                    📚 No books found for "${result.query}"
+                </div>
+            `;
+            return;
+        }
+        
+        let html = `<div style="margin-bottom: 1rem; font-weight: 500; color: var(--gray-700);">Found ${count} book${count !== 1 ? 's' : ''}:</div>`;
+        
+        books.forEach(book => {
+            const authors = book.authors ? book.authors.map(a => a.name).join(', ') : 'Unknown Author';
+            const description = book.description || 'No description available';
+            
+            html += `
+                <div class="book-result-item">
+                    ${book.cover_image ? 
+                        `<img src="${book.cover_image}" alt="${this.escapeHtml(book.title)}" class="book-cover" onerror="this.outerHTML='<div class=\\"book-cover-placeholder\\">No Cover</div>'">` :
+                        '<div class="book-cover-placeholder">No Cover</div>'
+                    }
+                    <div class="book-info">
+                        <div class="book-title">${this.escapeHtml(book.title)}</div>
+                        <div class="book-author">by ${this.escapeHtml(authors)}</div>
+                        <div class="book-description">${this.escapeHtml(description)}</div>
+                        <div class="book-actions">
+                            <button class="import-book-btn" onclick="app.importBook('${this.escapeHtml(book.title)}', ${this.escapeHtml(JSON.stringify(book))})">
+                                🤖 Import & Extract Tropes
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+    };
+    
+    TropeApp.prototype.importBook = async function(title, bookData) {
+        const resultsDiv = document.getElementById('bookSearchResults');
+        
+        // Show loading state
+        const loadingDiv = document.createElement('div');
+        loadingDiv.innerHTML = '<div class="ai-results loading">Importing book and extracting tropes using AI...</div>';
+        resultsDiv.appendChild(loadingDiv);
+        
+        try {
+            const response = await fetch('/api/ai/books/import', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ title })
+            });
+            
+            const result = await response.json();
+            loadingDiv.remove();
+            
+            if (result.success) {
+                const tropeCount = result.tropes_added ? result.tropes_added.length : 0;
+                const successDiv = document.createElement('div');
+                successDiv.innerHTML = `
+                    <div style="background: var(--success-50); border: 1px solid var(--success-200); color: var(--success-800); padding: 1rem; border-radius: 6px; margin-top: 1rem;">
+                        ✅ Successfully imported "${title}" and discovered ${tropeCount} trope${tropeCount !== 1 ? 's' : ''}!
+                        ${tropeCount > 0 ? `<br><strong>Tropes found:</strong> ${result.tropes_added.map(t => t.name).join(', ')}` : ''}
+                    </div>
+                `;
+                resultsDiv.appendChild(successDiv);
+                
+                // Refresh data
+                await this.loadData();
+                
+                // Show success briefly then remove
+                setTimeout(() => successDiv.remove(), 5000);
+            } else {
+                const errorDiv = document.createElement('div');
+                errorDiv.innerHTML = `
+                    <div style="background: var(--danger-50); border: 1px solid var(--danger-200); color: var(--danger-800); padding: 1rem; border-radius: 6px; margin-top: 1rem;">
+                        ❌ Import failed: ${result.error}
+                    </div>
+                `;
+                resultsDiv.appendChild(errorDiv);
+                setTimeout(() => errorDiv.remove(), 5000);
+            }
+            
+        } catch (error) {
+            loadingDiv.remove();
+            console.error('Import Error:', error);
+            
+            const errorDiv = document.createElement('div');
+            errorDiv.innerHTML = `
+                <div style="background: var(--danger-50); border: 1px solid var(--danger-200); color: var(--danger-800); padding: 1rem; border-radius: 6px; margin-top: 1rem;">
+                    ❌ Import failed: ${error.message}
+                </div>
+            `;
+            resultsDiv.appendChild(errorDiv);
+            setTimeout(() => errorDiv.remove(), 5000);
+        }
+    };
+    
+    TropeApp.prototype.loadAIStatus = async function() {
+        try {
+            const response = await fetch('/api/ai/status');
+            const status = await response.json();
+            
+            const serviceStatus = document.getElementById('aiServiceStatus');
+            const modelsStatus = document.getElementById('aiModelsStatus');
+            
+            if (serviceStatus) {
+                serviceStatus.textContent = status.ai_service || 'Unknown';
+                serviceStatus.className = `status-value ${status.ai_service === 'ready' ? 'success' : 'error'}`;
+            }
+            
+            if (modelsStatus) {
+                const apis = status.apis_configured || {};
+                const available = Object.entries(apis)
+                    .filter(([key, value]) => value)
+                    .map(([key]) => key.charAt(0).toUpperCase() + key.slice(1))
+                    .join(', ');
+                
+                modelsStatus.textContent = available || 'None';
+                modelsStatus.className = `status-value ${available ? 'success' : 'error'}`;
+            }
+            
+        } catch (error) {
+            console.error('Failed to load AI status:', error);
+            
+            const serviceStatus = document.getElementById('aiServiceStatus');
+            const modelsStatus = document.getElementById('aiModelsStatus');
+            
+            if (serviceStatus) {
+                serviceStatus.textContent = 'Error';
+                serviceStatus.className = 'status-value error';
+            }
+            
+            if (modelsStatus) {
+                modelsStatus.textContent = 'Unavailable';
+                modelsStatus.className = 'status-value error';
+            }
+        }
+    };
+    
+    TropeApp.prototype.escapeHtml = function(unsafe) {
+        return unsafe
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    };
 
 // Initialize the app when the page loads
 let app;
