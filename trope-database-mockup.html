@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Trope Database</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Literata:ital@0;1&display=swap" rel="stylesheet">
+    <style>
+        /* Enhanced Root Variables */
+        :root {
+            /* Typography */
+            --font-stack-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            --font-stack-reading: 'Literata', Georgia, serif;
+            
+            /* Responsive Typography Scale */
+            --text-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.813rem);
+            --text-sm: clamp(0.875rem, 0.8rem + 0.375vw, 0.938rem);
+            --text-base: clamp(1rem, 0.9rem + 0.5vw, 1.125rem);
+            --text-lg: clamp(1.125rem, 1rem + 0.625vw, 1.25rem);
+            --text-xl: clamp(1.25rem, 1.1rem + 0.75vw, 1.5rem);
+            --text-2xl: clamp(1.5rem, 1.3rem + 1vw, 1.875rem);
+            
+            /* Enhanced Color System */
+            --primary-50: #eff6ff;
+            --primary-100: #dbeafe;
+            --primary-400: #60a5fa;
+            --primary-500: #3b82f6;
+            --primary-600: #2563eb;
+            --primary-700: #1d4ed8;
+            
+            --accent-purple: #8b5cf6;
+            --accent-teal: #14b8a6;
+            --accent-amber: #f59e0b;
+            
+            --success-500: #22c55e;
+            --success-600: #16a34a;
+            --danger-500: #ef4444;
+            
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+            
+            /* Surfaces */
+            --surface-elevated: #ffffff;
+            --surface-base: #fafafa;
+            --surface-sunken: #f5f5f5;
+            
+            /* Animations */
+            --ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
+            --ease-in-out-circ: cubic-bezier(0.85, 0, 0.15, 1);
+            
+            /* Shadows */
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-base: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        
+        /* Dark Mode Variables */
+        [data-theme="dark"] {
+            --surface-elevated: #2a2a2a;
+            --surface-base: #1a1a1a;
+            --surface-sunken: #0f0f0f;
+            
+            --gray-50: #1a1a1a;
+            --gray-100: #262626;
+            --gray-200: #404040;
+            --gray-300: #525252;
+            --gray-400: #737373;
+            --gray-500: #a3a3a3;
+            --gray-600: #d4d4d4;
+            --gray-700: #e5e5e5;
+            --gray-800: #f5f5f5;
+            --gray-900: #fafafa;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: var(--font-stack-ui);
+            line-height: 1.6;
+            color: var(--gray-900);
+            background: linear-gradient(135deg, var(--gray-50) 0%, var(--surface-base) 100%);
+            min-height: 100vh;
+            padding: 1.25rem;
+        }
+        
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            background: var(--surface-elevated);
+            border-radius: 16px;
+            box-shadow: var(--shadow-xl);
+            overflow: hidden;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        
+        /* Enhanced Header */
+        .header {
+            background: linear-gradient(135deg, var(--primary-600) 0%, var(--accent-purple) 100%);
+            color: white;
+            padding: 2.5rem 2rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: float 20s infinite linear;
+        }
+        
+        @keyframes float {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .header-content {
+            position: relative;
+            z-index: 1;
+        }
+        
+        .header h1 {
+            font-size: var(--text-2xl);
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            margin-bottom: 0.5rem;
+        }
+        
+        .header p {
+            font-size: var(--text-lg);
+            opacity: 0.95;
+            font-weight: 400;
+        }
+        
+        .theme-toggle {
+            position: absolute;
+            top: 1.5rem;
+            right: 1.5rem;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s var(--ease-out-expo);
+            backdrop-filter: blur(10px);
+        }
+        
+        .theme-toggle:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
+        }
+        
+        /* Enhanced Navigation */
+        .nav {
+            background: var(--gray-800);
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 2px;
+            position: relative;
+        }
+        
+        .nav button {
+            background: transparent;
+            border: none;
+            color: var(--gray-300);
+            padding: 1rem 1.5rem;
+            cursor: pointer;
+            font-size: var(--text-base);
+            font-weight: 500;
+            transition: all 0.3s var(--ease-out-expo);
+            position: relative;
+            overflow: hidden;
+            min-height: 48px;
+        }
+        
+        .nav button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(59, 130, 246, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+        
+        .nav button:hover::before {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .nav button::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            width: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary-400), var(--accent-purple));
+            transition: all 0.3s var(--ease-out-expo);
+            transform: translateX(-50%);
+        }
+        
+        .nav button:hover {
+            color: white;
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .nav button.active {
+            color: white;
+            background: rgba(59, 130, 246, 0.2);
+        }
+        
+        .nav button.active::after,
+        .nav button:hover::after {
+            width: 100%;
+        }
+        
+        .create-button {
+            background: linear-gradient(135deg, var(--success-500), var(--accent-teal)) !important;
+            color: white !important;
+            font-weight: 600 !important;
+            margin-left: auto;
+            margin-right: 0.5rem;
+            padding: 0.75rem 1.5rem !important;
+            border-radius: 8px !important;
+            box-shadow: 0 4px 14px 0 rgba(34, 197, 94, 0.3);
+        }
+        
+        .create-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px 0 rgba(34, 197, 94, 0.4);
+        }
+        
+        /* Enhanced Search */
+        .search-section {
+            padding: 1.5rem;
+            background: var(--surface-sunken);
+            border-bottom: 1px solid var(--gray-200);
+        }
+        
+        .search-box {
+            max-width: 600px;
+            margin: 0 auto;
+            position: relative;
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 0.875rem 1rem 0.875rem 3rem;
+            font-size: var(--text-base);
+            border: 2px solid var(--gray-300);
+            border-radius: 12px;
+            outline: none;
+            transition: all 0.3s var(--ease-out-expo);
+            background: var(--surface-elevated);
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: 14px center;
+        }
+        
+        .search-input:focus {
+            border-color: var(--primary-500);
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+            transform: translateY(-1px);
+        }
+        
+        /* Controls Section */
+        .controls-section {
+            padding: 1.5rem;
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+            flex-wrap: wrap;
+            border-bottom: 1px solid var(--gray-100);
+        }
+        
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .control-group label {
+            font-size: var(--text-sm);
+            color: var(--gray-600);
+            font-weight: 500;
+        }
+        
+        .control-select {
+            padding: 0.5rem 2rem 0.5rem 0.75rem;
+            border: 2px solid var(--gray-200);
+            border-radius: 8px;
+            background: var(--surface-elevated);
+            font-size: var(--text-sm);
+            color: var(--gray-900);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .control-select:hover {
+            border-color: var(--gray-300);
+        }
+        
+        .control-select:focus {
+            outline: none;
+            border-color: var(--primary-500);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .results-info {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .results-count {
+            font-size: var(--text-sm);
+            color: var(--gray-600);
+            font-weight: 600;
+        }
+        
+        .export-btn {
+            padding: 0.5rem 1rem;
+            background: var(--gray-500);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: var(--text-sm);
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s var(--ease-out-expo);
+        }
+        
+        .export-btn:hover {
+            background: var(--gray-600);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+        
+        /* Content Area */
+        .content {
+            padding: 2rem;
+        }
+        
+        /* Enhanced Card Grid */
+        .items-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        /* Enhanced Card Design */
+        .item-card {
+            background: var(--surface-elevated);
+            border: 1px solid var(--gray-200);
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: all 0.3s var(--ease-out-expo);
+            position: relative;
+            cursor: pointer;
+            overflow: hidden;
+        }
+        
+        .item-card::before {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            border-radius: 12px;
+            padding: 2px;
+            background: linear-gradient(135deg, var(--primary-500), var(--accent-purple));
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .item-card:hover::before {
+            opacity: 1;
+        }
+        
+        .item-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .item-title {
+            font-size: var(--text-xl);
+            font-weight: 600;
+            color: var(--gray-900);
+            margin-bottom: 0.75rem;
+            line-height: 1.3;
+        }
+        
+        .item-description {
+            font-family: var(--font-stack-reading);
+            color: var(--gray-700);
+            font-size: var(--text-sm);
+            line-height: 1.65;
+            margin-bottom: 1rem;
+        }
+        
+        .item-meta {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .tag {
+            background: linear-gradient(135deg, var(--primary-100), var(--primary-50));
+            color: var(--primary-700);
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: var(--text-xs);
+            font-weight: 600;
+            border: 1px solid var(--primary-200);
+            transition: all 0.2s ease;
+        }
+        
+        .tag:hover {
+            transform: scale(1.05);
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
+        }
+        
+        .stats {
+            display: flex;
+            gap: 1rem;
+            font-size: var(--text-sm);
+            color: var(--gray-600);
+            padding-top: 1rem;
+            border-top: 1px solid var(--gray-100);
+        }
+        
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+        
+        /* Action Buttons */
+        .item-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--gray-100);
+            justify-content: flex-end;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.3s var(--ease-out-expo);
+        }
+        
+        .item-card:hover .item-actions {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .action-btn {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s var(--ease-out-expo);
+            position: relative;
+        }
+        
+        .action-btn:hover {
+            transform: translateY(-2px) scale(1.1);
+        }
+        
+        .action-edit {
+            background: linear-gradient(135deg, var(--primary-50), var(--primary-100));
+            color: var(--primary-600);
+            border: 1px solid var(--primary-200);
+        }
+        
+        .action-delete {
+            background: linear-gradient(135deg, #fef2f2, #fee2e2);
+            color: var(--danger-500);
+            border: 1px solid #fecaca;
+        }
+        
+        /* Skeleton Loading */
+        @keyframes skeleton-pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .skeleton {
+            background: linear-gradient(90deg, 
+                var(--gray-200) 25%, 
+                var(--gray-100) 50%, 
+                var(--gray-200) 75%);
+            background-size: 200% 100%;
+            animation: skeleton-pulse 1.5s ease-in-out infinite;
+            border-radius: 4px;
+        }
+        
+        .skeleton-card {
+            background: var(--surface-elevated);
+            border: 1px solid var(--gray-200);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+        
+        .skeleton-title {
+            height: 24px;
+            width: 70%;
+            margin-bottom: 0.75rem;
+        }
+        
+        .skeleton-text {
+            height: 16px;
+            width: 100%;
+            margin-bottom: 0.5rem;
+        }
+        
+        .skeleton-text:last-child {
+            width: 85%;
+        }
+        
+        /* Status Indicator */
+        .status-indicator {
+            position: absolute;
+            top: 1.5rem;
+            right: 4.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+        }
+        
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--gray-400);
+            position: relative;
+        }
+        
+        @keyframes pulse-ring {
+            0% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+            }
+            70% {
+                transform: scale(1);
+                box-shadow: 0 0 0 10px rgba(34, 197, 94, 0);
+            }
+            100% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+            }
+        }
+        
+        .status-dot.connected {
+            background: var(--success-500);
+            animation: pulse-ring 2s infinite;
+        }
+        
+        .status-dot.connecting {
+            background: var(--accent-amber);
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .items-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .item-actions {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-content">
+                <h1>Personal Trope Database</h1>
+                <p>Your curated collection of writing tropes and literary devices</p>
+            </div>
+            <button class="theme-toggle" onclick="toggleTheme()">🌙</button>
+            <div class="status-indicator">
+                <div class="status-dot connected"></div>
+            </div>
+        </div>
+        
+        <!-- Navigation -->
+        <div class="nav">
+            <button class="active">All Tropes</button>
+            <button>Categories</button>
+            <button>📚 Works</button>
+            <button>🔗 Examples</button>
+            <button>📊 Analytics</button>
+            <button class="create-button">+ Create Trope</button>
+        </div>
+        
+        <!-- Search Section -->
+        <div class="search-section">
+            <div class="search-box">
+                <input type="text" class="search-input" placeholder="Search tropes, descriptions, or categories...">
+            </div>
+        </div>
+        
+        <!-- Controls -->
+        <div class="controls-section">
+            <div class="control-group">
+                <label>Sort by:</label>
+                <select class="control-select">
+                    <option>Name</option>
+                    <option>Description</option>
+                    <option>Date Added</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <select class="control-select">
+                    <option>A-Z</option>
+                    <option>Z-A</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>Filter by category:</label>
+                <select class="control-select">
+                    <option>All Categories</option>
+                    <option>Romance</option>
+                    <option>Character Development</option>
+                    <option>Plot Devices</option>
+                </select>
+            </div>
+            <div class="results-info">
+                <span class="results-count">155 tropes</span>
+                <button class="export-btn">📥 Export CSV</button>
+            </div>
+        </div>
+        
+        <!-- Content Area -->
+        <div class="content">
+            <div class="items-grid">
+                <!-- Example Cards -->
+                <div class="item-card">
+                    <div class="item-title">Across the Tracks/Wrong Side of the Tracks</div>
+                    <div class="item-description">
+                        Romance between individuals from different social or economic backgrounds, highlighting class disparities and societal expectations.
+                    </div>
+                    <div class="item-meta">
+                        <span class="tag">Class Difference</span>
+                    </div>
+                    <div class="stats">
+                        <span class="stat-item">📚 2 works</span>
+                        <span class="stat-item">🔗 2 examples</span>
+                    </div>
+                    <div class="item-actions">
+                        <button class="action-btn action-edit">✏️</button>
+                        <button class="action-btn action-delete">🗑️</button>
+                    </div>
+                </div>
+                
+                <div class="item-card">
+                    <div class="item-title">Age Difference/Cougar/May-December/Silver Fox</div>
+                    <div class="item-description">
+                        Relationships with significant age gaps. 'Cougar' refers to older woman/younger man; 'Silver Fox' to attractive older men; 'May-December' to any large...
+                    </div>
+                    <div class="item-meta">
+                        <span class="tag">Age Gap</span>
+                    </div>
+                    <div class="stats">
+                        <span class="stat-item">📚 2 works</span>
+                        <span class="stat-item">🔗 2 examples</span>
+                    </div>
+                    <div class="item-actions">
+                        <button class="action-btn action-edit">✏️</button>
+                        <button class="action-btn action-delete">🗑️</button>
+                    </div>
+                </div>
+                
+                <div class="item-card">
+                    <div class="item-title">Age-Positive Romance</div>
+                    <div class="item-description">
+                        Mature characters finding love later in life, defying youth-obsessed culture.
+                    </div>
+                    <div class="item-meta">
+                        <span class="tag">Representation</span>
+                    </div>
+                    <div class="stats">
+                        <span class="stat-item">📚 0 works</span>
+                        <span class="stat-item">🔗 0 examples</span>
+                    </div>
+                    <div class="item-actions">
+                        <button class="action-btn action-edit">✏️</button>
+                        <button class="action-btn action-delete">🗑️</button>
+                    </div>
+                </div>
+                
+                <!-- Skeleton Loading Example -->
+                <div class="skeleton-card">
+                    <div class="skeleton skeleton-title"></div>
+                    <div class="skeleton skeleton-text"></div>
+                    <div class="skeleton skeleton-text"></div>
+                    <div class="skeleton skeleton-text"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            
+            const themeToggle = document.querySelector('.theme-toggle');
+            themeToggle.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+        }
+        
+        // Add click handlers for navigation
+        document.querySelectorAll('.nav button').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+        
+        // Simulate status changes
+        const statusDot = document.querySelector('.status-dot');
+        setInterval(() => {
+            const states = ['connected', 'connecting', ''];
+            const currentState = statusDot.classList.contains('connected') ? 'connected' : 
+                               statusDot.classList.contains('connecting') ? 'connecting' : '';
+            const currentIndex = states.indexOf(currentState);
+            const nextIndex = (currentIndex + 1) % states.length;
+            
+            statusDot.className = 'status-dot';
+            if (states[nextIndex]) {
+                statusDot.classList.add(states[nextIndex]);
+            }
+        }, 3000);
+    </script>
+</body>
+</html>
