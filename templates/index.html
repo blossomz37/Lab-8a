@@ -29,13 +29,11 @@
         
         <!-- Navigation -->
         <div class="nav">
-            <button data-section="tropes" class="active">All Tropes</button>
+            <button data-section="tropes" class="active">Tropes</button>
             <button data-section="categories">Categories</button>
             <button data-section="works">📚 Works</button>
             <button data-section="examples">🔗 Examples</button>
             <button data-section="analytics">📊 Analytics</button>
-            <button data-section="ai-assistant">🤖 AI Assistant</button>
-            <button data-section="create" class="create-button">+ Create Trope</button>
         </div>
         
         <!-- Search Section -->
@@ -43,7 +41,7 @@
             <div class="search-box">
                 <div class="search-input-wrapper">
                     <svg class="search-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M9 17C13.4183 17 17 13.4183 17 9C17 4.58172 13.4183 1 9 1C4.58172 1 1 4.58172 1 9C1 13.4183 4.58172 17 9 17Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M9 17C13.4183 17 17 13.4183 17 9C1 9C1 13.4183 4.58172 17 9 17Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         <path d="M19 19L14.65 14.65" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                     <input 
@@ -56,8 +54,83 @@
                 </div>
                 <div id="searchResults" class="search-results"></div>
             </div>
+            
+            <!-- AI Tools Section -->
+            <div class="ai-tools-section">
+                <button data-section="ai-assistant" class="ai-tool-btn">
+                    🤖 AI Assistant
+                </button>
+                <button data-section="book-discovery" class="ai-tool-btn">
+                    📚 Smart Book Discovery
+                </button>
+            </div>
+            
+            <!-- Dynamic Form Container -->
+            <div id="dynamicFormContainer" class="dynamic-form-container" style="display: none;">
+                <!-- Forms will be inserted here dynamically -->
+            </div>
         </div>
         
+        <!-- Edit Trope Section -->
+        <div id="editSection" class="section">
+            <div class="create-form-container">
+                <h2 class="form-title">Edit Trope</h2>
+                <p class="section-help">Update the trope details and categories. All changes will be saved to your personal database.</p>
+                
+                <form id="editTropeForm" novalidate>
+                    <input type="hidden" id="editTropeId" name="tropeId">
+                    
+                    <div class="form-group">
+                        <label for="editTropeName" data-required="*">Trope Name</label>
+                        <input 
+                            type="text" 
+                            id="editTropeName" 
+                            name="name" 
+                            required 
+                            minlength="2" 
+                            maxlength="200"
+                            placeholder="Enter a descriptive trope name..."
+                            autocomplete="off"
+                        >
+                        <span class="field-help">Give your trope a clear, memorable name (2-200 characters)</span>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editTropeDescription" data-required="*">Description</label>
+                        <textarea 
+                            id="editTropeDescription" 
+                            name="description" 
+                            required 
+                            minlength="10" 
+                            maxlength="2000"
+                            rows="6"
+                            placeholder="Describe what this trope is, how it works, and why it's significant. Include examples of when it might appear in stories..."
+                        ></textarea>
+                        <span class="field-help">Provide a detailed explanation of the trope (10-2000 characters)</span>
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="form-label">📂 Categories</div>
+                        <div id="editCategorySelection" class="category-selection">
+                            <div class="text-muted">Loading categories...</div>
+                        </div>
+                        <span class="field-help">Select one or more categories that best describe this trope</span>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="app.showSection('tropes')">
+                            ← Cancel
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            💾 Update Trope
+                        </button>
+                    </div>
+                </form>
+                
+                <div id="editFeedback" class="feedback" style="display: none;"></div>
+            </div>
+        </div>
+
         <!-- Content Area -->
         <div class="content">
             
@@ -213,20 +286,21 @@
                 <!-- Controls Section -->
                 <div class="controls-section">
                     <div class="sort-controls">
-                        <label for="sortSelect">Sort by:</label>
-                        <select id="sortSelect" class="control-select">
-                            <option value="name">Name</option>
-                            <option value="description">Description</option>
-                        </select>
-                        
-                        <select id="orderSelect" class="control-select">
-                            <option value="asc">A-Z</option>
-                            <option value="desc">Z-A</option>
-                        </select>
+                        <label>Sort by:</label>
+                        <div class="sort-control-group">
+                            <select id="sortSelect" class="control-select">
+                                <option value="name">Name</option>
+                                <option value="description">Description</option>
+                            </select>
+                            <select id="orderSelect" class="control-select">
+                                <option value="asc">A-Z</option>
+                                <option value="desc">Z-A</option>
+                            </select>
+                        </div>
                     </div>
                     
                     <div class="filter-controls">
-                        <label for="categoryFilter">Filter by category:</label>
+                        <label for="categoryFilter">Category:</label>
                         <select id="categoryFilter" class="control-select">
                             <option value="">All Categories</option>
                         </select>
@@ -234,7 +308,10 @@
                     
                     <div class="results-info">
                         <span id="resultsCount">Loading...</span>
-                        <button id="exportTropesBtn" class="btn btn-secondary btn-small">📥 Export CSV</button>
+                        <div class="action-buttons">
+                            <button data-section="create" class="btn-icon" title="Create Trope">➕</button>
+                            <button id="exportTropesBtn" class="btn-icon" title="Export CSV">📥</button>
+                        </div>
                     </div>
                 </div>
                 
@@ -248,7 +325,10 @@
                 <div class="controls-section">
                     <div class="results-info">
                         <span id="categoriesResultsCount">Loading...</span>
-                        <button id="exportCategoriesBtn" class="btn btn-secondary btn-small">📥 Export CSV</button>
+                        <div class="action-buttons">
+                            <button id="addCategoryBtn" class="btn-icon" title="Add Category">➕</button>
+                            <button id="exportCategoriesBtn" class="btn-icon" title="Export CSV">📥</button>
+                        </div>
                     </div>
                 </div>
                 
@@ -261,22 +341,23 @@
             <div id="worksSection" class="section">
                 <div class="controls-section">
                     <div class="sort-controls">
-                        <label for="worksSort">Sort by:</label>
-                        <select id="worksSort" class="control-select">
-                            <option value="title">Title</option>
-                            <option value="year">Year</option>
-                            <option value="author">Author</option>
-                            <option value="type">Type</option>
-                        </select>
-                        
-                        <select id="worksOrder" class="control-select">
-                            <option value="asc">A-Z</option>
-                            <option value="desc">Z-A</option>
-                        </select>
+                        <label>Sort by:</label>
+                        <div class="sort-control-group">
+                            <select id="worksSort" class="control-select">
+                                <option value="title">Title</option>
+                                <option value="year">Year</option>
+                                <option value="author">Author</option>
+                                <option value="type">Type</option>
+                            </select>
+                            <select id="worksOrder" class="control-select">
+                                <option value="asc">A-Z</option>
+                                <option value="desc">Z-A</option>
+                            </select>
+                        </div>
                     </div>
                     
                     <div class="filter-controls">
-                        <label for="workTypeFilter">Filter by type:</label>
+                        <label for="workTypeFilter">Type:</label>
                         <select id="workTypeFilter" class="control-select">
                             <option value="">All Types</option>
                             <option value="Novel">Novel</option>
@@ -291,8 +372,10 @@
                     
                     <div class="results-info">
                         <span id="worksResultsCount">Loading...</span>
-                        <button id="createWorkBtn" class="btn btn-primary btn-small">+ Add Work</button>
-                        <button id="exportWorksBtn" class="btn btn-secondary btn-small">📥 Export CSV</button>
+                        <div class="action-buttons">
+                            <button id="createWorkBtn" class="btn-icon" title="Add Work">➕</button>
+                            <button id="exportWorksBtn" class="btn-icon" title="Export CSV">📥</button>
+                        </div>
                     </div>
                 </div>
                 
@@ -305,26 +388,30 @@
             <div id="examplesSection" class="section">
                 <div class="controls-section">
                     <div class="sort-controls">
-                        <label for="examplesSort">Sort by:</label>
-                        <select id="examplesSort" class="control-select">
-                            <option value="created_at">Date Created</option>
-                            <option value="trope_name">Trope Name</option>
-                            <option value="work_title">Work Title</option>
-                        </select>
-                        
-                        <select id="examplesOrder" class="control-select">
-                            <option value="desc">Newest First</option>
-                            <option value="asc">Oldest First</option>
-                        </select>
+                        <label>Sort by:</label>
+                        <div class="sort-control-group">
+                            <select id="examplesSort" class="control-select">
+                                <option value="created_at">Date Created</option>
+                                <option value="trope_name">Trope Name</option>
+                                <option value="work_title">Work Title</option>
+                            </select>
+                            <select id="examplesOrder" class="control-select">
+                                <option value="desc">Newest First</option>
+                                <option value="asc">Oldest First</option>
+                            </select>
+                        </div>
                     </div>
                     
                     <div class="filter-controls">
+                        <!-- Empty for now, could add trope/work filters later -->
                     </div>
                     
                     <div class="results-info">
                         <span id="examplesResultsCount">Loading...</span>
-                        <button id="createExampleBtn" class="btn btn-primary btn-small">+ Add Example</button>
-                        <button id="exportExamplesBtn" class="btn btn-secondary btn-small">📥 Export CSV</button>
+                        <div class="action-buttons">
+                            <button id="createExampleBtn" class="btn-icon" title="Add Example">➕</button>
+                            <button id="exportExamplesBtn" class="btn-icon" title="Export CSV">📥</button>
+                        </div>
                     </div>
                 </div>
                 
@@ -342,8 +429,8 @@
                     <div class="export-section">
                         <h3>🔄 Data Export</h3>
                         <div class="export-buttons">
-                            <button id="exportCsvBtn" class="btn btn-secondary">
-                                📥 Export CSV
+                            <button id="exportCsvBtn" class="btn-icon" title="Export CSV">
+                                📥
                             </button>
                             <span class="export-help">Download all tropes and categories as CSV file</span>
                         </div>
@@ -359,10 +446,12 @@
             <!-- Create Trope Section -->
             <div id="createSection" class="section">
                 <div class="create-form-container">
-                    <h2>Create New Trope</h2>
+                    <h2 class="form-title">Create New Trope</h2>
+                    <p class="section-help">Add a new trope to your personal collection. Be descriptive and choose relevant categories to help with organization.</p>
+                    
                     <form id="createTropeForm" class="create-form">
                         <div class="form-group">
-                            <label for="tropeName">Name *</label>
+                            <label for="tropeName" data-required="*">Trope Name</label>
                             <input 
                                 type="text" 
                                 id="tropeName" 
@@ -370,105 +459,46 @@
                                 required 
                                 minlength="2" 
                                 maxlength="200"
-                                placeholder="Enter trope name..."
+                                placeholder="Enter a descriptive trope name..."
                                 autocomplete="off"
                             >
-                            <span class="field-help">2-200 characters</span>
+                            <span class="field-help">Give your trope a clear, memorable name (2-200 characters)</span>
                         </div>
                         
                         <div class="form-group">
-                            <label for="tropeDescription">Description *</label>
+                            <label for="tropeDescription" data-required="*">Description</label>
                             <textarea 
                                 id="tropeDescription" 
                                 name="description" 
                                 required 
                                 minlength="10" 
                                 maxlength="2000"
-                                rows="4"
-                                placeholder="Describe the trope in detail..."
+                                rows="6"
+                                placeholder="Describe what this trope is, how it works, and why it's significant. Include examples of when it might appear in stories..."
                             ></textarea>
-                            <span class="field-help">10-2000 characters</span>
+                            <span class="field-help">Provide a detailed explanation of the trope (10-2000 characters)</span>
                         </div>
                         
                         <div class="form-group">
-                            <div class="form-label">Categories</div>
+                            <div class="form-label">📂 Categories</div>
                             <div id="categorySelection" class="category-selection">
                                 <div class="loading">Loading categories...</div>
                             </div>
-                            <span class="field-help">Select one or more categories</span>
+                            <span class="field-help">Select one or more categories that best describe this trope</span>
                         </div>
                         
                         <div class="form-actions">
                             <button type="button" class="btn btn-secondary" onclick="app.showSection('tropes')">
-                                Cancel
+                                ← Cancel
                             </button>
                             <button type="submit" class="btn btn-primary">
-                                Create Trope
+                                ✨ Create Trope
                             </button>
                         </div>
                     </form>
                     
                     <div id="createFeedback" class="feedback" style="display: none;"></div>
                 </div>
-            </div>
-        </div>
-        
-        <!-- Edit Trope Section -->
-        <div id="editSection" class="section">
-            <div class="create-form-container">
-                <h2 class="form-title">Edit Trope</h2>
-                
-                <form id="editTropeForm" novalidate>
-                    <input type="hidden" id="editTropeId" name="tropeId">
-                    
-                    <div class="form-group">
-                        <label for="editTropeName">Name *</label>
-                        <input 
-                            type="text" 
-                            id="editTropeName" 
-                            name="name" 
-                            required 
-                            minlength="2" 
-                            maxlength="200"
-                            placeholder="Enter trope name..."
-                            autocomplete="off"
-                        >
-                        <span class="field-help">2-200 characters</span>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="editTropeDescription">Description *</label>
-                        <textarea 
-                            id="editTropeDescription" 
-                            name="description" 
-                            required 
-                            minlength="10" 
-                            maxlength="2000"
-                            rows="4"
-                            placeholder="Describe the trope in detail..."
-                        ></textarea>
-                        <span class="field-help">10-2000 characters</span>
-                    </div>
-                    
-                    <div class="form-group">
-                        <div class="form-label">Categories (Optional)</div>
-                        <div id="editCategorySelection" class="category-selection">
-                            <div class="text-muted">Loading categories...</div>
-                        </div>
-                        <span class="field-help">Select relevant categories for this trope</span>
-                    </div>
-                    
-                    <div class="form-actions">
-                        <button type="button" class="btn btn-secondary" onclick="app.showSection('tropes')">
-                            Cancel
-                        </button>
-                        <button type="submit" class="btn btn-primary">
-                            Update Trope
-                        </button>
-                    </div>
-                </form>
-                
-                <div id="editFeedback" class="feedback" style="display: none;"></div>
             </div>
         </div>
         
@@ -706,6 +736,6 @@
         </div>
     </div>
     
-    <script src="{{ url_for('static', filename='app.js') }}"></script>
+    <script src="{{ url_for('static', filename='app.js') }}?v={{ config.get('VERSION', '1.0.0') }}&t={{ timestamp }}"></script>
 </body>
 </html>

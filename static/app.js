@@ -27,6 +27,7 @@ class TropeApp {
         try {
             this.setupEventListeners();
             this.setupStatusIndicator();
+            this.setupFormEnhancements(); // Add form enhancements
             await this.loadData();
             this.setupControls();
             this.showSection('tropes');
@@ -61,17 +62,17 @@ class TropeApp {
             });
         }
         
-        // Create Work button
+        // Create Work button - Show form in dynamic container
         document.addEventListener('click', (e) => {
             if (e.target.id === 'createWorkBtn') {
-                this.showSection('createWork');
+                this.showDynamicForm('work');
             }
         });
         
-                // Create Example button
+        // Create Example button - Show form in dynamic container
         document.addEventListener('click', (e) => {
             if (e.target.id === 'createExampleBtn') {
-                this.showSection('createExample');
+                this.showDynamicForm('example');
             }
         });
 
@@ -94,12 +95,173 @@ class TropeApp {
                 this.showSection(this.currentView);
             }
         });
+        
+        // Dynamic form submissions - using event delegation
+        document.addEventListener('submit', (e) => {
+            if (e.target.id === 'dynamicWorkForm') {
+                e.preventDefault();
+                this.handleDynamicWorkSubmit(e.target);
+            } else if (e.target.id === 'dynamicExampleForm') {
+                e.preventDefault();
+                this.handleDynamicExampleSubmit(e.target);
+            }
+        });
     }
+    
+    // ===== FORM ENHANCEMENTS =====
+    setupFormEnhancements() {
+        // Setup character counters and live validation
+        document.addEventListener('input', (e) => {
+            if (e.target.matches('input[maxlength], textarea[maxlength]')) {
+                this.updateCharacterCounter(e.target);
+            }
+            
+            if (e.target.matches('#editTropeName, #tropeName')) {
+                this.validateNameField(e.target);
+            }
+            
+            if (e.target.matches('#editTropeDescription, #tropeDescription')) {
+                this.validateDescriptionField(e.target);
+            }
+        });
+        
+        // Setup form focus enhancements
+        document.addEventListener('focus', (e) => {
+            if (e.target.matches('.form-group input, .form-group textarea, .form-group select')) {
+                this.enhanceFocusState(e.target);
+            }
+        }, true);
+        
+        document.addEventListener('blur', (e) => {
+            if (e.target.matches('.form-group input, .form-group textarea, .form-group select')) {
+                this.removeFocusState(e.target);
+            }
+        }, true);
+    }
+    
+    updateCharacterCounter(field) {
+        const maxLength = parseInt(field.getAttribute('maxlength'));
+        const currentLength = field.value.length;
+        const group = field.closest('.form-group');
+        
+        if (group && maxLength) {
+            group.setAttribute('data-current-length', currentLength);
+            group.setAttribute('data-max-length', maxLength);
+            
+            // Add visual feedback for character limit
+            const percentage = (currentLength / maxLength) * 100;
+            if (percentage > 90) {
+                group.classList.add('near-limit');
+            } else {
+                group.classList.remove('near-limit');
+            }
+            
+            if (currentLength >= maxLength) {
+                group.classList.add('at-limit');
+            } else {
+                group.classList.remove('at-limit');
+            }
+        }
+    }
+    
+    validateNameField(field) {
+        const value = field.value.trim();
+        const group = field.closest('.form-group');
+        
+        if (value.length === 0) {
+            this.setFieldState(group, 'neutral');
+        } else if (value.length < 2) {
+            this.setFieldState(group, 'error', 'Name must be at least 2 characters');
+        } else if (value.length > 200) {
+            this.setFieldState(group, 'error', 'Name cannot exceed 200 characters');
+        } else {
+            this.setFieldState(group, 'success');
+        }
+    }
+    
+    validateDescriptionField(field) {
+        const value = field.value.trim();
+        const group = field.closest('.form-group');
+        
+        if (value.length === 0) {
+            this.setFieldState(group, 'neutral');
+        } else if (value.length < 10) {
+            this.setFieldState(group, 'error', 'Description must be at least 10 characters');
+        } else if (value.length > 2000) {
+            this.setFieldState(group, 'error', 'Description cannot exceed 2000 characters');
+        } else {
+            this.setFieldState(group, 'success');
+        }
+    }
+    
+    setFieldState(group, state, message = '') {
+        // Remove existing state classes
+        group.classList.remove('error', 'success', 'neutral');
+        
+        // Add new state
+        if (state !== 'neutral') {
+            group.classList.add(state);
+        }
+        
+        // Update help text if needed
+        if (message) {
+            const helpText = group.querySelector('.field-help');
+            if (helpText) {
+                helpText.textContent = message;
+            }
+        } else {
+            // Restore original help text
+            const field = group.querySelector('input, textarea, select');
+            if (field) {
+                this.restoreOriginalHelpText(group, field);
+            }
+        }
+    }
+    
+    restoreOriginalHelpText(group, field) {
+        const helpText = group.querySelector('.field-help');
+        if (helpText && field) {
+            const fieldName = field.name || field.id;
+            const originalMessages = {
+                'name': 'Give your trope a clear, memorable name (2-200 characters)',
+                'description': 'Provide a detailed explanation of the trope (10-2000 characters)'
+            };
+            
+            if (originalMessages[fieldName]) {
+                helpText.textContent = originalMessages[fieldName];
+            }
+        }
+    }
+    
+    enhanceFocusState(field) {
+        const group = field.closest('.form-group');
+        if (group) {
+            group.classList.add('focused');
+        }
+        
+        // Auto-expand textarea on focus
+        if (field.tagName === 'TEXTAREA') {
+            const currentHeight = parseInt(window.getComputedStyle(field).height);
+            const minExpandedHeight = 160;
+            if (currentHeight < minExpandedHeight) {
+                field.style.transition = 'height 0.3s ease';
+                field.style.height = minExpandedHeight + 'px';
+            }
+        }
+    }
+    
+    removeFocusState(field) {
+        const group = field.closest('.form-group');
+        if (group) {
+            group.classList.remove('focused');
+        }
+    }
+    // ===== END FORM ENHANCEMENTS =====
     
     // ================================
     // Status Monitoring System
     // ================================
-    
+
     initializeStatusMonitoring() {
         // Set up online/offline event listeners
         window.addEventListener('online', () => {
@@ -285,10 +447,19 @@ class TropeApp {
             const worksData = await worksResponse.json();
             const examplesData = await examplesResponse.json();
             
+            // Extract data from API responses
             this.data.tropes = tropesData.tropes || [];
             this.data.categories = categoriesData.categories || [];
             this.data.works = worksData.works || [];
             this.data.examples = examplesData.examples || [];
+            
+            // Debug logging
+            console.log('Data loaded at', new Date().toISOString(), {
+                tropes: this.data.tropes.length,
+                categories: this.data.categories.length,
+                works: this.data.works.length,
+                examples: this.data.examples.length
+            });
             
             this.filteredData.tropes = [...this.data.tropes];
             this.filteredData.categories = [...this.data.categories];
@@ -448,6 +619,147 @@ class TropeApp {
         }
     }
     
+    showDynamicForm(formType) {
+        const container = document.getElementById('dynamicFormContainer');
+        if (!container) {
+            console.error('Dynamic form container not found');
+            return;
+        }
+        
+        // Create form HTML based on type
+        let formHTML = '';
+        if (formType === 'work') {
+            formHTML = this.getWorkFormHTML();
+        } else if (formType === 'example') {
+            formHTML = this.getExampleFormHTML();
+        }
+        
+        // Show container with form
+        container.innerHTML = formHTML;
+        container.style.display = 'block';
+        
+        // Smooth scroll to form
+        container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        
+        // Focus first input
+        const firstInput = container.querySelector('input, select, textarea');
+        if (firstInput) {
+            setTimeout(() => firstInput.focus(), 300);
+        }
+    }
+    
+    getWorkFormHTML() {
+        return `
+            <div class="create-form-container">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3>Add New Work</h3>
+                    <button type="button" onclick="app.hideDynamicForm()" class="btn-icon" title="Close">✕</button>
+                </div>
+                <form id="dynamicWorkForm" class="create-form">
+                    <div class="form-group">
+                        <label for="dynamicWorkTitle">Title *</label>
+                        <input type="text" id="dynamicWorkTitle" name="title" required minlength="1" maxlength="200" placeholder="Enter work title..." autocomplete="off">
+                        <span class="field-help">1-200 characters</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="dynamicWorkType">Type *</label>
+                        <select id="dynamicWorkType" name="type" required class="control-select">
+                            <option value="">Select type...</option>
+                            <option value="Novel">Novel</option>
+                            <option value="Film">Film</option>
+                            <option value="TV Show">TV Show</option>
+                            <option value="Short Story">Short Story</option>
+                            <option value="Comic">Comic</option>
+                            <option value="Game">Game</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="dynamicWorkAuthor">Author</label>
+                        <input type="text" id="dynamicWorkAuthor" name="author" maxlength="200" placeholder="Enter author/creator name...">
+                    </div>
+                    <div class="form-group">
+                        <label for="dynamicWorkYear">Year</label>
+                        <input type="number" id="dynamicWorkYear" name="year" min="1" max="2100" placeholder="Publication/release year">
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" onclick="app.hideDynamicForm()" class="btn btn-secondary">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Add Work</button>
+                    </div>
+                </form>
+            </div>
+        `;
+    }
+    
+    getExampleFormHTML() {
+        // Get tropes and works for dropdowns
+        const tropeOptions = this.data.tropes.map(trope => 
+            `<option value="${trope.id}">${trope.name}</option>`
+        ).join('');
+        
+        const workOptions = this.data.works.map(work => 
+            `<option value="${work.id}">${work.title}</option>`
+        ).join('');
+        
+        return `
+            <div class="create-form-container">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3>Add New Example</h3>
+                    <button type="button" onclick="app.hideDynamicForm()" class="btn-icon" title="Close">✕</button>
+                </div>
+                <form id="dynamicExampleForm" class="create-form">
+                    <div class="form-group">
+                        <label for="dynamicExampleTrope">Trope *</label>
+                        <select id="dynamicExampleTrope" name="trope_id" required class="control-select">
+                            <option value="">Select trope...</option>
+                            ${tropeOptions}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="dynamicExampleWork">Work *</label>
+                        <select id="dynamicExampleWork" name="work_id" required class="control-select">
+                            <option value="">Select work...</option>
+                            ${workOptions}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="dynamicExampleDescription">Description *</label>
+                        <textarea id="dynamicExampleDescription" name="description" required minlength="5" maxlength="2000" rows="4" placeholder="Describe how this trope appears in the work..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="dynamicExamplePageRef">Page/Scene Reference</label>
+                        <input type="text" id="dynamicExamplePageRef" name="page_reference" maxlength="100" placeholder="Page numbers, chapter, scene, timestamp...">
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" onclick="app.hideDynamicForm()" class="btn btn-secondary">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Add Example</button>
+                    </div>
+                </form>
+            </div>
+        `;
+    }
+    
+    hideDynamicForm() {
+        const container = document.getElementById('dynamicFormContainer');
+        if (container) {
+            container.classList.add('closing');
+            setTimeout(() => {
+                container.style.display = 'none';
+                container.classList.remove('closing');
+                container.innerHTML = '';
+            }, 200);
+        }
+    }
+    
+    showDynamicModal() {
+        const container = document.getElementById('dynamicFormContainer');
+        if (container) {
+            container.style.display = 'block';
+            // Smooth scroll to modal
+            container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    }
+    
     updateSearchPlaceholder(section) {
         const searchInput = document.getElementById('searchInput');
         if (!searchInput) return;
@@ -484,28 +796,30 @@ class TropeApp {
         const html = `
             <div class="items-grid">
                 ${this.filteredData.tropes.map(trope => `
-                    <div class="item-card">
-                        <div class="item-content" onclick="app.showTropeDetail('${trope.id}')">
+                    <div class="item-card" data-card-id="${trope.id}" onclick="app.toggleCardExpansion('tropes', '${trope.id}', event)">
+                        <div class="item-content">
                             <div class="item-title">${this.escapeHtml(trope.name)}</div>
-                            <div class="item-description">
-                                ${this.escapeHtml(trope.description || '').substring(0, 150)}${trope.description && trope.description.length > 150 ? '...' : ''}
+                            <div class="item-description truncated">
+                                ${this.escapeHtml(trope.description || 'No description provided.')}
                             </div>
                             <div class="item-meta">
                                 <div class="category-tags">
                                     ${trope.categories.map(cat => `<span class="tag category clickable" onclick="app.filterByCategory('${this.escapeHtml(cat)}'); event.stopPropagation();" title="Filter by ${this.escapeHtml(cat)}">${this.escapeHtml(cat)}</span>`).join('')}
                                 </div>
                                 <div class="relationship-stats">
-                                    ${trope.work_count > 0 ? `<span class="stat-item" title="Appears in ${trope.work_count} work${trope.work_count !== 1 ? 's' : ''}">📚 ${trope.work_count} work${trope.work_count !== 1 ? 's' : ''}</span>` : ''}
-                                    ${trope.example_count > 0 ? `<span class="stat-item" title="${trope.example_count} example${trope.example_count !== 1 ? 's' : ''} recorded">🔗 ${trope.example_count} example${trope.example_count !== 1 ? 's' : ''}</span>` : ''}
+                                    <span class="stat-item" title="${trope.categories_count} categor${trope.categories_count !== 1 ? 'ies' : 'y'} assigned">🏷️ ${trope.categories_count}</span>
+                                    ${trope.works_count > 0 ? `<span class="stat-item clickable" onclick="app.viewTropeWorks('${trope.id}'); event.stopPropagation();" title="📚 Referenced in ${trope.works_count} work${trope.works_count !== 1 ? 's' : ''} - click to view">📚 ${trope.works_count}</span>` : ''}
+                                    ${trope.examples_count > 0 ? `<span class="stat-item clickable" onclick="app.viewTropeExamples('${trope.id}'); event.stopPropagation();" title="� ${trope.examples_count} specific example${trope.examples_count !== 1 ? 's' : ''} documented from books/media - click to view details">🔗 ${trope.examples_count}</span>` : ''}
                                 </div>
                             </div>
                         </div>
                         <div class="item-actions">
-                            ${trope.work_count > 0 ? `<button class="action-btn action-view" onclick="app.viewTropeWorks('${trope.id}'); event.stopPropagation();" aria-label="View works using this trope" title="View works">📚</button>` : ''}
-                            <button class="action-btn action-edit" onclick="app.editTrope('${trope.id}'); event.stopPropagation();" aria-label="Edit trope">
+                            ${trope.works_count > 0 ? `<button class="action-btn action-view" onclick="app.viewTropeWorks('${trope.id}'); event.stopPropagation();" aria-label="View works using this trope" title="📚 View all ${trope.works_count} work${trope.works_count !== 1 ? 's' : ''} that use this trope">📚</button>` : ''}
+                            ${trope.examples_count > 0 ? `<button class="action-btn action-examples" onclick="app.viewTropeExamples('${trope.id}'); event.stopPropagation();" aria-label="View examples of this trope" title="🔗 View ${trope.examples_count} documented example${trope.examples_count !== 1 ? 's' : ''} of this trope in action">🔗</button>` : ''}
+                            <button class="action-btn action-edit" onclick="app.editTrope('${trope.id}'); event.stopPropagation();" aria-label="Edit trope" title="✏️ Edit this trope's name, description, and categories">
                                 ✏️
                             </button>
-                            <button class="action-btn action-delete" onclick="app.deleteTrope('${trope.id}'); event.stopPropagation();" aria-label="Delete trope">
+                            <button class="action-btn action-delete" onclick="app.deleteTrope('${trope.id}'); event.stopPropagation();" aria-label="Delete trope" title="🗑️ Permanently delete this trope and all its data">
                                 🗑️
                             </button>
                         </div>
@@ -533,10 +847,20 @@ class TropeApp {
         const html = `
             <div class="items-grid">
                 ${this.filteredData.categories.map(category => `
-                    <div class="item-card" onclick="app.showCategoryDetail('${category.id}')">
-                        <div class="item-title">${this.escapeHtml(category.display_name || category.name)}</div>
-                        <div class="item-meta">
-                            <span class="count">${category.trope_count} tropes</span>
+                    <div class="item-card">
+                        <div class="item-content" onclick="app.showCategoryDetail('${category.id}')">
+                            <div class="item-title">${this.escapeHtml(category.display_name || category.name)}</div>
+                            <div class="item-meta">
+                                <span class="count">${category.trope_count} tropes</span>
+                            </div>
+                        </div>
+                        <div class="item-actions">
+                            <button class="action-btn action-edit" onclick="app.editCategory('${category.id}'); event.stopPropagation();" aria-label="Edit category" title="Edit category">
+                                ✏️
+                            </button>
+                            <button class="action-btn action-delete" onclick="app.deleteCategory('${category.id}'); event.stopPropagation();" aria-label="Delete category" title="Delete category">
+                                🗑️
+                            </button>
                         </div>
                     </div>
                 `).join('')}
@@ -579,7 +903,7 @@ class TropeApp {
                 </div>
                 
                 <div class="category-chart">
-                    <h4>🏆 Most Popular Categories</h4>
+                    <h4>📊 Categories</h4>
                     ${this.renderCategoryChart(analytics.popular_categories)}
                 </div>
             `;
@@ -597,17 +921,57 @@ class TropeApp {
             return '<div class="text-muted">No category data available.</div>';
         }
         
-        const maxCount = categories[0].trope_count;
+        // Calculate total for percentages
+        const total = categories.reduce((sum, cat) => sum + cat.trope_count, 0);
         
-        return categories.map(category => `
-            <div class="category-bar">
-                <span class="category-name">${this.escapeHtml(category.name)}</span>
-                <div class="category-progress">
-                    <div class="category-progress-fill" style="width: ${(category.trope_count / maxCount) * 100}%"></div>
+        // Generate colors for each category
+        const colors = [
+            '#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6',
+            '#EC4899', '#14B8A6', '#F97316', '#6366F1', '#84CC16'
+        ];
+        
+        // Create pie chart segments
+        let currentAngle = 0;
+        const pieSegments = categories.slice(0, 8).map((category, index) => {
+            const percentage = (category.trope_count / total) * 100;
+            const angle = (category.trope_count / total) * 360;
+            const color = colors[index % colors.length];
+            
+            // Create conic gradient segment
+            const startAngle = currentAngle;
+            const endAngle = currentAngle + angle;
+            currentAngle = endAngle;
+            
+            return {
+                category,
+                percentage: percentage.toFixed(1),
+                color,
+                startAngle,
+                endAngle
+            };
+        });
+        
+        // Build conic gradient
+        const gradientStops = [];
+        pieSegments.forEach(segment => {
+            gradientStops.push(`${segment.color} ${segment.startAngle}deg ${segment.endAngle}deg`);
+        });
+        
+        return `
+            <div class="pie-chart-container">
+                <div class="pie-chart" style="background: conic-gradient(${gradientStops.join(', ')})"></div>
+                <div class="pie-chart-legend">
+                    ${pieSegments.map(segment => `
+                        <div class="legend-item">
+                            <span class="legend-color" style="background-color: ${segment.color}"></span>
+                            <span class="legend-label">${this.escapeHtml(segment.category.name)}</span>
+                            <span class="legend-value">${segment.percentage}% (${segment.category.trope_count})</span>
+                        </div>
+                    `).join('')}
+                    ${categories.length > 8 ? `<div class="legend-item text-muted">...and ${categories.length - 8} more</div>` : ''}
                 </div>
-                <span class="category-count">${category.trope_count}</span>
             </div>
-        `).join('');
+        `;
     }
     
     setupExportButton() {
@@ -649,7 +1013,7 @@ class TropeApp {
         }
     }
 
-    async showTropeDetail(tropeId) {
+    async showTropeDetail(tropeId, fromContext = null) {
         this.showLoading();
         
         try {
@@ -660,24 +1024,48 @@ class TropeApp {
             
             const trope = await response.json();
             
+            // Determine back button text and target container based on current context
+            let backButtonText = '← Back to Tropes';
+            let targetContainer = 'tropesContent';
+            
+            if (this.currentView === 'categories' || fromContext === 'categories') {
+                backButtonText = '← Back to Category';
+                targetContainer = 'categoriesContent';
+            }
+            
             const html = `
                 <div class="item-detail">
-                    <button class="back-button">← Back to Tropes</button>
+                    <button class="back-button" onclick="app.goBackFromDetail()">${backButtonText}</button>
                     <div class="detail-header">
                         <h2 class="detail-title">${this.escapeHtml(trope.name)}</h2>
                         <div class="detail-description">${this.escapeHtml(trope.description || 'No description available.')}</div>
                     </div>
                     <div class="detail-section">
+                        <h3>Relationships</h3>
+                        <div class="relationship-stats detail-stats">
+                            <span class="stat-item" title="${trope.categories_count} categor${trope.categories_count !== 1 ? 'ies' : 'y'}">🏷️ ${trope.categories_count} categor${trope.categories_count !== 1 ? 'ies' : 'y'}</span>
+                            ${trope.works_count > 0 ? `<span class="stat-item clickable" onclick="app.viewTropeWorks('${trope.id}')" title="Appears in ${trope.works_count} work${trope.works_count !== 1 ? 's' : ''}">📚 ${trope.works_count} work${trope.works_count !== 1 ? 's' : ''}</span>` : '<span class="stat-item">📚 0 works</span>'}
+                            ${trope.examples_count > 0 ? `<span class="stat-item clickable" onclick="app.viewTropeExamples('${trope.id}')" title="${trope.examples_count} example${trope.examples_count !== 1 ? 's' : ''} recorded">🔗 ${trope.examples_count} example${trope.examples_count !== 1 ? 's' : ''}</span>` : '<span class="stat-item">🔗 0 examples</span>'}
+                        </div>
+                    </div>
+                    <div class="detail-section">
                         <h3>Categories</h3>
                         <div class="item-meta">
-                            ${trope.categories.map(cat => `<span class="tag category">${this.escapeHtml(cat.name)}</span>`).join('')}
-                            ${trope.categories.length === 0 ? '<span class="text-muted">No categories assigned</span>' : ''}
+                            ${trope.categories && trope.categories.length > 0 
+                                ? trope.categories.map(cat => `<span class="tag category clickable-tag" onclick="app.filterByCategory('${cat.name}')">${this.escapeHtml(cat.name)}</span>`).join('') 
+                                : '<span class="text-muted">No categories assigned</span>'}
                         </div>
+                    </div>
+                    <div class="detail-actions">
+                        ${trope.works_count > 0 ? `<button class="btn btn-primary" onclick="app.viewTropeWorks('${trope.id}')">📚 View Works</button>` : ''}
+                        ${trope.examples_count > 0 ? `<button class="btn btn-primary" onclick="app.viewTropeExamples('${trope.id}')">🔗 View Examples</button>` : ''}
+                        <button class="btn btn-secondary" onclick="app.editTrope('${trope.id}')">✏️ Edit Trope</button>
+                        <button class="btn btn-danger" onclick="app.deleteTrope('${trope.id}')">🗑️ Delete Trope</button>
                     </div>
                 </div>
             `;
             
-            document.getElementById('tropesContent').innerHTML = html;
+            document.getElementById(targetContainer).innerHTML = html;
             
         } catch (error) {
             this.showError('Failed to load trope details.');
@@ -685,10 +1073,82 @@ class TropeApp {
         }
     }
     
+    toggleCardExpansion(cardType, itemId, event) {
+        event.stopPropagation();
+        
+        // Find the card element
+        const card = document.querySelector(`[data-card-id="${itemId}"]`);
+        if (!card) {
+            console.warn(`Card not found for ${cardType} with id ${itemId}`);
+            return;
+        }
+        
+        // Toggle the expanded state
+        const isExpanded = card.classList.contains('expanded');
+        
+        if (isExpanded) {
+            // Collapse the card
+            card.classList.remove('expanded');
+            
+            // Re-add truncation to description
+            const description = card.querySelector('.item-description');
+            if (description) {
+                description.classList.add('truncated');
+            }
+        } else {
+            // Expand the card
+            card.classList.add('expanded');
+            
+            // Remove truncation from description
+            const description = card.querySelector('.item-description');
+            if (description) {
+                description.classList.remove('truncated');
+            }
+        }
+    }
+    
+    goBackFromDetail() {
+        if (this.currentView === 'categories') {
+            // If we have a previous category context, go back to category detail
+            if (this.previousCategoryId) {
+                this.showCategoryDetail(this.previousCategoryId);
+            } else {
+                // Otherwise go back to categories list
+                this.renderCategories();
+            }
+        } else {
+            // Go back to tropes
+            this.renderTropes();
+        }
+    }
+    
+    filterByCategory(categoryName) {
+        // Switch to tropes section and apply filter
+        this.showSection('tropes');
+        
+        // Find the category in our data
+        const category = this.data.categories.find(cat => 
+            cat.name === categoryName || cat.display_name === categoryName
+        );
+        
+        if (category) {
+            // Set the filter
+            const filterSelect = document.getElementById('categoryFilter');
+            if (filterSelect) {
+                filterSelect.value = category.name;
+                // Trigger the filter change
+                this.handleControlChange();
+            }
+        }
+    }
+    
     async showCategoryDetail(categoryId) {
         this.showLoading();
         
         try {
+            // Store the category ID for back navigation
+            this.previousCategoryId = categoryId;
+            
             const response = await fetch(`/api/categories/${categoryId}/tropes`);
             if (!response.ok) {
                 throw new Error('Category not found');
@@ -698,7 +1158,7 @@ class TropeApp {
             
             const html = `
                 <div class="item-detail">
-                    <button class="back-button">← Back to Categories</button>
+                    <button class="back-button" onclick="app.renderCategories()">← Back to Categories</button>
                     <div class="detail-header">
                         <h2 class="detail-title">${this.escapeHtml(data.category.display_name || data.category.name)}</h2>
                         <p class="text-muted">${data.trope_count} tropes in this category</p>
@@ -708,10 +1168,16 @@ class TropeApp {
                         ${data.tropes.length > 0 ? `
                             <div class="items-grid">
                                 ${data.tropes.map(trope => `
-                                    <div class="item-card" onclick="app.showTropeDetail('${trope.id}')">
+                                    <div class="item-card trope-detail-card" onclick="app.showTropeDetail('${trope.id}', 'categories')">
                                         <div class="item-title">${this.escapeHtml(trope.name)}</div>
                                         <div class="item-description">
                                             ${this.escapeHtml(trope.description || '').substring(0, 150)}${trope.description && trope.description.length > 150 ? '...' : ''}
+                                        </div>
+                                        <div class="item-meta">
+                                            ${trope.categories && trope.categories.length > 0 
+                                                ? trope.categories.slice(0, 3).map(cat => `<span class="tag">${this.escapeHtml(cat)}</span>`).join('') 
+                                                : ''}
+                                            ${trope.categories && trope.categories.length > 3 ? `<span class="tag">+${trope.categories.length - 3} more</span>` : ''}
                                         </div>
                                     </div>
                                 `).join('')}
@@ -1146,6 +1612,107 @@ class TropeApp {
         element.style.display = 'block';
     }
     
+    async handleDynamicWorkSubmit(form) {
+        const submitButton = form.querySelector('button[type="submit"]');
+        
+        // Get form data
+        const formData = new FormData(form);
+        const title = formData.get('title').trim();
+        const type = formData.get('type');
+        const author = formData.get('author')?.trim();
+        const year = formData.get('year');
+        
+        // Validate
+        if (!title || !type) {
+            alert('Please fill in all required fields.');
+            return;
+        }
+        
+        // Show loading
+        submitButton.disabled = true;
+        submitButton.textContent = 'Adding...';
+        
+        try {
+            const workData = { title, type };
+            if (author) workData.author = author;
+            if (year) workData.year = parseInt(year);
+            
+            const response = await fetch('/api/works', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(workData)
+            });
+            
+            if (response.ok) {
+                // Success - refresh data and close form
+                await this.loadData();
+                this.hideDynamicForm();
+                this.showSection('works'); // Navigate to works section
+                alert('Work added successfully!');
+            } else {
+                const result = await response.json();
+                alert(result.error || 'Failed to add work');
+            }
+            
+        } catch (error) {
+            console.error('Error adding work:', error);
+            alert('Network error. Please check your connection.');
+        } finally {
+            submitButton.disabled = false;
+            submitButton.textContent = 'Add Work';
+        }
+    }
+    
+    async handleDynamicExampleSubmit(form) {
+        const submitButton = form.querySelector('button[type="submit"]');
+        
+        // Get form data
+        const formData = new FormData(form);
+        const tropeId = formData.get('trope_id');
+        const workId = formData.get('work_id');
+        const description = formData.get('description').trim();
+        const pageReference = formData.get('page_reference')?.trim();
+        
+        // Validate
+        if (!tropeId || !workId || !description) {
+            alert('Please fill in all required fields.');
+            return;
+        }
+        
+        // Show loading
+        submitButton.disabled = true;
+        submitButton.textContent = 'Adding...';
+        
+        try {
+            const exampleData = { trope_id: tropeId, work_id: workId, description };
+            if (pageReference) exampleData.page_reference = pageReference;
+            
+            const response = await fetch('/api/examples', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(exampleData)
+            });
+            
+            if (response.ok) {
+                // Success - refresh data and close form
+                await this.loadData();
+                this.hideDynamicForm();
+                this.showSection('examples'); // Navigate to examples section
+                alert('Example added successfully!');
+            } else {
+                const result = await response.json();
+                alert(result.error || 'Failed to add example');
+            }
+            
+        } catch (error) {
+            console.error('Error adding example:', error);
+            alert('Network error. Please check your connection.');
+        } finally {
+            submitButton.disabled = false;
+            submitButton.textContent = 'Add Example';
+        }
+    }
+    
     async editTrope(tropeId) {
         try {
             // Fetch the trope data
@@ -1321,8 +1888,103 @@ class TropeApp {
         }
     }
 
+    async viewTropeWorks(tropeId) {
+        try {
+            const response = await fetch(`/api/tropes/${tropeId}/works`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch trope works');
+            }
+            
+            const data = await response.json();
+            
+            // Show works in a detailed view
+            const container = document.getElementById('dynamicFormContainer');
+            container.innerHTML = `
+                <div class="form-header">
+                    <h2>📚 Works featuring "${data.trope_name}"</h2>
+                    <button type="button" onclick="app.hideDynamicForm()" class="btn btn-secondary">← Back</button>
+                </div>
+                <div class="works-list">
+                    ${data.works.length === 0 ? 
+                        '<p class="text-muted">No works found for this trope.</p>' : 
+                        data.works.map(work => `
+                            <div class="work-card">
+                                <h3>${this.escapeHtml(work.title)}</h3>
+                                <div class="work-meta">
+                                    <span class="work-type">${this.escapeHtml(work.type)}</span>
+                                    ${work.year ? `<span class="work-year">(${work.year})</span>` : ''}
+                                    ${work.author ? `<span class="work-author">by ${this.escapeHtml(work.author)}</span>` : ''}
+                                </div>
+                                ${work.example_description ? `<div class="example-description">${this.escapeHtml(work.example_description)}</div>` : ''}
+                                ${work.page_reference ? `<div class="page-reference">Page: ${this.escapeHtml(work.page_reference)}</div>` : ''}
+                            </div>
+                        `).join('')
+                    }
+                </div>
+            `;
+            this.showDynamicModal();
+            
+        } catch (error) {
+            console.error('Error loading trope works:', error);
+            alert('Failed to load works for this trope.');
+        }
+    }
+
+    async viewTropeExamples(tropeId) {
+        try {
+            const response = await fetch(`/api/tropes/${tropeId}/examples`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch trope examples');
+            }
+            
+            const data = await response.json();
+            
+            // Show examples in a detailed view
+            const container = document.getElementById('dynamicFormContainer');
+            container.innerHTML = `
+                <div class="form-header">
+                    <h2>🔗 Examples of "${data.trope_name}"</h2>
+                    <button type="button" onclick="app.hideDynamicForm()" class="btn btn-secondary">← Back</button>
+                </div>
+                <div class="examples-list">
+                    ${data.examples.length === 0 ? 
+                        '<p class="text-muted">No examples found for this trope.</p>' : 
+                        data.examples.map(example => `
+                            <div class="example-card">
+                                <h3>${this.escapeHtml(example.work_title)}</h3>
+                                <div class="work-meta">
+                                    <span class="work-type">${this.escapeHtml(example.work_type)}</span>
+                                    ${example.work_year ? `<span class="work-year">(${example.work_year})</span>` : ''}
+                                    ${example.work_author ? `<span class="work-author">by ${this.escapeHtml(example.work_author)}</span>` : ''}
+                                </div>
+                                <div class="example-description">${this.escapeHtml(example.description)}</div>
+                                ${example.page_reference ? `<div class="page-reference">Page: ${this.escapeHtml(example.page_reference)}</div>` : ''}
+                            </div>
+                        `).join('')
+                    }
+                </div>
+            `;
+            this.showDynamicModal();
+            
+        } catch (error) {
+            console.error('Error loading trope examples:', error);
+            alert('Failed to load examples for this trope.');
+        }
+    }
+
+    async editCategory(categoryId) {
+        // TODO: Implement category editing
+        alert('Category editing feature coming soon!');
+    }
+
+    async deleteCategory(categoryId) {
+        // TODO: Implement category deletion
+        alert('Category deletion feature coming soon!');
+    }
+
     // Render Works section
     renderWorks() {
+        console.log('renderWorks called, filtered works:', this.filteredData.works.length);
         const worksContainer = document.getElementById('worksContent');
         const worksCount = document.getElementById('worksResultsCount');
         
@@ -1340,24 +2002,24 @@ class TropeApp {
         worksContainer.innerHTML = `
             <div class="items-grid">
                 ${this.filteredData.works.map(work => `
-                    <div class="item-card">
+                    <div class="item-card" data-card-id="${work.id}" onclick="app.toggleCardExpansion('works', '${work.id}', event)">
                         <div class="item-content">
                             <div class="item-title">${this.escapeHtml(work.title)}</div>
-                            <div class="item-description">
+                            <div class="item-description truncated">
                                 ${this.escapeHtml(work.description || 'No description provided.')}
                             </div>
                             <div class="item-meta">
                                 <span class="tag">${this.escapeHtml(work.type)}</span>
                                 ${work.author ? `<span class="tag">${this.escapeHtml(work.author)}</span>` : ''}
                                 ${work.year ? `<span class="tag">${work.year}</span>` : ''}
-                                <span class="tag">${this.data.examples.filter(ex => ex.work_id === work.id).length} examples</span>
+                                <span class="tag clickable" title="🔗 ${this.data.examples.filter(ex => ex.work_id === work.id).length} documented trope examples from this work - click card to view details">${this.data.examples.filter(ex => ex.work_id === work.id).length} examples</span>
                             </div>
                         </div>
                         <div class="item-actions">
-                            <button class="action-btn action-edit" onclick="app.editWork('${work.id}'); event.stopPropagation();" aria-label="Edit work">
+                            <button class="action-btn action-edit" onclick="app.editWork('${work.id}'); event.stopPropagation();" title="✏️ Edit this work's details" aria-label="Edit work">
                                 ✏️
                             </button>
-                            <button class="action-btn action-delete" onclick="app.deleteWork('${work.id}'); event.stopPropagation();" aria-label="Delete work">
+                            <button class="action-btn action-delete" onclick="app.deleteWork('${work.id}'); event.stopPropagation();" title="🗑️ Delete this work and all associated examples" aria-label="Delete work">
                                 🗑️
                             </button>
                         </div>
@@ -1369,6 +2031,7 @@ class TropeApp {
 
     // Render Examples section
     renderExamples() {
+        console.log('renderExamples called, filtered examples:', this.filteredData.examples.length);
         const examplesContainer = document.getElementById('examplesContent');
         const examplesCount = document.getElementById('examplesResultsCount');
         
@@ -1390,25 +2053,26 @@ class TropeApp {
                     const work = this.data.works.find(w => w.id === example.work_id);
                     
                     return `
-                        <div class="item-card">
+                        <div class="item-card" data-card-id="${example.id}" onclick="app.toggleCardExpansion('examples', '${example.id}', event)">
                             <div class="item-content">
                                 <div class="item-title">
-                                    <span class="trope-name">${this.escapeHtml(trope ? trope.name : 'Unknown Trope')}</span>
-                                    <span class="connection-arrow"> → </span>
-                                    <span class="work-name">${this.escapeHtml(work ? work.title : 'Unknown Work')}</span>
+                                    ${this.escapeHtml(work ? work.title : 'Unknown Work')}
                                 </div>
-                                <div class="item-description">
+                                <div class="item-meta">
+                                    <span class="tag trope-tag">${this.escapeHtml(trope ? trope.name : 'Unknown Trope')}</span>
+                                    ${work && work.author ? `<span class="tag">${this.escapeHtml(work.author)}</span>` : ''}
+                                    ${work && work.year ? `<span class="tag">${work.year}</span>` : ''}
+                                    ${example.page_reference ? `<span class="tag">Page: ${this.escapeHtml(example.page_reference)}</span>` : ''}
+                                </div>
+                                <div class="item-description truncated">
                                     ${this.escapeHtml(example.description || 'No description provided.')}
                                 </div>
-                                ${example.page_reference ? `<div class="item-meta">
-                                    <span class="tag">Page: ${this.escapeHtml(example.page_reference)}</span>
-                                </div>` : ''}
                             </div>
                             <div class="item-actions">
-                                <button class="action-btn action-edit" onclick="app.editExample('${example.id}'); event.stopPropagation();" aria-label="Edit example">
+                                <button class="action-btn action-edit" onclick="app.editExample('${example.id}'); event.stopPropagation();" title="✏️ Edit this trope-work connection" aria-label="Edit example">
                                     ✏️
                                 </button>
-                                <button class="action-btn action-delete" onclick="app.deleteExample('${example.id}'); event.stopPropagation();" aria-label="Delete example">
+                                <button class="action-btn action-delete" onclick="app.deleteExample('${example.id}'); event.stopPropagation();" title="🗑️ Remove this example connection" aria-label="Delete example">
                                     🗑️
                                 </button>
                             </div>

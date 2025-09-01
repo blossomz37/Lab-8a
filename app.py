@@ -8,13 +8,15 @@ import io
 import tempfile
 import os
 from datetime import datetime
-from ai_routes import ai_bp
+# Temporarily commenting out AI imports to test card functionality
+# from ai_routes import ai_bp
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for frontend integration later
 
 # Register AI blueprint
-app.register_blueprint(ai_bp)
+# Temporarily commenting out AI registration
+# app.register_blueprint(ai_bp)
 
 # Database path
 DB_PATH = os.path.join(os.path.dirname(__file__), 'db', 'genre_tropes.db')
@@ -46,7 +48,8 @@ def normalize_search_term(text):
 @app.route('/')
 def home():
     """Serve the main web interface"""
-    return render_template('index.html', title="Personal Trope Database")
+    import time
+    return render_template('index.html', title="Personal Trope Database", timestamp=str(int(time.time())))
 
 @app.route('/api')
 def api_info():
@@ -80,17 +83,21 @@ def get_tropes():
         if sort_order not in valid_orders:
             sort_order = 'asc'
         
-        # Build base query
+        # Build base query with relationship counts
         base_query = """
         SELECT 
             t.id,
             t.name,
             t.description,
             GROUP_CONCAT(c.name) as categories,
-            GROUP_CONCAT(c.id) as category_ids
+            GROUP_CONCAT(c.id) as category_ids,
+            COUNT(DISTINCT c.id) as categories_count,
+            COUNT(DISTINCT e.work_id) as works_count,
+            COUNT(DISTINCT e.id) as examples_count
         FROM tropes t
         LEFT JOIN trope_categories tc ON t.id = tc.trope_id
         LEFT JOIN categories c ON tc.category_id = c.id
+        LEFT JOIN examples e ON t.id = e.trope_id
         """
         
         # Add category filtering if specified
@@ -311,6 +318,22 @@ def get_trope_detail(trope_id):
             WHERE tc.trope_id = ?
         """, (trope_id,)).fetchall()
         
+        # Get works count and examples via this trope
+        works_data = conn.execute("""
+            SELECT DISTINCT w.id, w.title, w.type, w.year, w.author
+            FROM works w
+            JOIN examples e ON w.id = e.work_id
+            WHERE e.trope_id = ?
+            ORDER BY w.title
+        """, (trope_id,)).fetchall()
+        
+        # Get examples count
+        examples_count = conn.execute("""
+            SELECT COUNT(*) as count
+            FROM examples
+            WHERE trope_id = ?
+        """, (trope_id,)).fetchone()
+        
         conn.close()
         
         # Build response
@@ -321,6 +344,10 @@ def get_trope_detail(trope_id):
                 'name': format_category_name(cat['name'])
             } for cat in [dict_from_row(cat) for cat in categories]
         ]
+        result['works'] = [dict_from_row(work) for work in works_data]
+        result['works_count'] = len(works_data)
+        result['examples_count'] = examples_count['count'] if examples_count else 0
+        result['categories_count'] = len(categories)
         
         return jsonify(result)
         
@@ -512,6 +539,68 @@ def delete_trope(trope_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/tropes/<trope_id>/works')
+def get_trope_works(trope_id):
+    """Get all works associated with a specific trope"""
+    try:
+        conn = get_db_connection()
+        
+        # Verify trope exists
+        trope = conn.execute("SELECT name FROM tropes WHERE id = ?", (trope_id,)).fetchone()
+        if not trope:
+            conn.close()
+            return jsonify({"error": "Trope not found"}), 404
+        
+        # Get works with example details
+        works = conn.execute("""
+            SELECT DISTINCT w.*, e.description as example_description, e.page_reference
+            FROM works w
+            JOIN examples e ON w.id = e.work_id
+            WHERE e.trope_id = ?
+            ORDER BY w.title
+        """, (trope_id,)).fetchall()
+        
+        conn.close()
+        
+        return jsonify({
+            "trope_name": trope['name'],
+            "works": [dict_from_row(work) for work in works]
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/tropes/<trope_id>/examples')
+def get_trope_examples(trope_id):
+    """Get all examples for a specific trope"""
+    try:
+        conn = get_db_connection()
+        
+        # Verify trope exists
+        trope = conn.execute("SELECT name FROM tropes WHERE id = ?", (trope_id,)).fetchone()
+        if not trope:
+            conn.close()
+            return jsonify({"error": "Trope not found"}), 404
+        
+        # Get examples with work details
+        examples = conn.execute("""
+            SELECT e.*, w.title as work_title, w.type as work_type, w.year as work_year, w.author as work_author
+            FROM examples e
+            JOIN works w ON e.work_id = w.id
+            WHERE e.trope_id = ?
+            ORDER BY w.title, e.page_reference
+        """, (trope_id,)).fetchall()
+        
+        conn.close()
+        
+        return jsonify({
+            "trope_name": trope['name'],
+            "examples": [dict_from_row(example) for example in examples]
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/api/categories')
 def get_categories():
     """Get all categories with trope counts"""
@@ -563,12 +652,19 @@ def get_tropes_by_category(category_id):
             conn.close()
             return jsonify({"error": "Category not found"}), 404
         
-        # Get tropes in this category
+        # Get tropes in this category with relationship counts
         tropes = conn.execute("""
-            SELECT t.id, t.name, t.description
+            SELECT 
+                t.id, 
+                t.name, 
+                t.description,
+                COUNT(DISTINCT e.work_id) as works_count,
+                COUNT(DISTINCT e.id) as examples_count
             FROM tropes t
             JOIN trope_categories tc ON t.id = tc.trope_id
+            LEFT JOIN examples e ON t.id = e.trope_id
             WHERE tc.category_id = ?
+            GROUP BY t.id, t.name, t.description
             ORDER BY t.name
         """, (category_id,)).fetchall()
         
@@ -585,6 +681,108 @@ def get_tropes_by_category(category_id):
         }
         
         return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/works')
+def get_works():
+    """Get all works with sorting and filtering"""
+    try:
+        conn = get_db_connection()
+        
+        # Get query parameters
+        sort_by = request.args.get('sort', 'title')  # title, year, author, type
+        sort_order = request.args.get('order', 'asc')  # asc, desc
+        filter_type = request.args.get('filter_type', None)
+        
+        # Validate sort parameters
+        valid_sorts = ['title', 'year', 'author', 'type', 'created_at']
+        valid_orders = ['asc', 'desc']
+        
+        if sort_by not in valid_sorts:
+            sort_by = 'title'
+        if sort_order not in valid_orders:
+            sort_order = 'asc'
+        
+        # Build query
+        query = "SELECT * FROM works"
+        params = []
+        
+        if filter_type:
+            query += " WHERE type = ?"
+            params.append(filter_type)
+        
+        query += f" ORDER BY {sort_by} {sort_order.upper()}"
+        
+        works = conn.execute(query, params).fetchall()
+        conn.close()
+        
+        # Convert to list of dictionaries
+        result = [dict_from_row(work) for work in works]
+        
+        return jsonify({
+            "count": len(result),
+            "works": result,
+            "sort_by": sort_by,
+            "sort_order": sort_order,
+            "filter_type": filter_type
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/examples')
+def get_examples():
+    """Get all examples with work and trope details"""
+    try:
+        conn = get_db_connection()
+        
+        # Get query parameters
+        sort_by = request.args.get('sort', 'created_at')  # created_at, trope_name, work_title
+        sort_order = request.args.get('order', 'desc')  # asc, desc
+        
+        # Validate sort parameters
+        valid_sorts = ['created_at', 'trope_name', 'work_title']
+        valid_orders = ['asc', 'desc']
+        
+        if sort_by not in valid_sorts:
+            sort_by = 'created_at'
+        if sort_order not in valid_orders:
+            sort_order = 'desc'
+        
+        # Build query with joins
+        query = """
+        SELECT 
+            e.id, e.description, e.page_reference, e.created_at, e.updated_at,
+            t.id as trope_id, t.name as trope_name,
+            w.id as work_id, w.title as work_title, w.author as work_author, 
+            w.type as work_type, w.year as work_year
+        FROM examples e
+        JOIN tropes t ON e.trope_id = t.id
+        JOIN works w ON e.work_id = w.id
+        """
+        
+        # Handle different sort options
+        if sort_by == 'trope_name':
+            query += f" ORDER BY t.name {sort_order.upper()}"
+        elif sort_by == 'work_title':
+            query += f" ORDER BY w.title {sort_order.upper()}"
+        else:  # created_at
+            query += f" ORDER BY e.created_at {sort_order.upper()}"
+        
+        examples = conn.execute(query).fetchall()
+        conn.close()
+        
+        # Convert to list of dictionaries
+        result = [dict_from_row(example) for example in examples]
+        
+        return jsonify({
+            "count": len(result),
+            "examples": result,
+            "sort_by": sort_by,
+            "sort_order": sort_order
+        })
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500

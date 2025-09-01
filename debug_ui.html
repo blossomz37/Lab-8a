@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug UI Data Loading</title>
+</head>
+<body>
+    <h1>Debug UI Data Loading</h1>
+    <button onclick="checkData()">Check Data</button>
+    <button onclick="testEndpoints()">Test Endpoints</button>
+    <div id="results"></div>
+
+    <script>
+        async function testEndpoints() {
+            const results = document.getElementById('results');
+            results.innerHTML = '<h2>Testing Endpoints...</h2>';
+            
+            try {
+                // Test works endpoint
+                const worksResponse = await fetch('http://localhost:8000/api/works');
+                const worksData = await worksResponse.json();
+                results.innerHTML += `<h3>Works Endpoint:</h3><pre>${JSON.stringify(worksData, null, 2).substring(0, 500)}...</pre>`;
+                
+                // Test examples endpoint
+                const examplesResponse = await fetch('http://localhost:8000/api/examples');
+                const examplesData = await examplesResponse.json();
+                results.innerHTML += `<h3>Examples Endpoint:</h3><pre>${JSON.stringify(examplesData, null, 2).substring(0, 500)}...</pre>`;
+                
+            } catch (error) {
+                results.innerHTML += `<h3>Error:</h3><p>${error.message}</p>`;
+            }
+        }
+        
+        async function checkData() {
+            const results = document.getElementById('results');
+            results.innerHTML = '<h2>Checking App Data...</h2>';
+            
+            // If we're on the main app page
+            if (window.app) {
+                results.innerHTML += `<h3>App Data:</h3>`;
+                results.innerHTML += `<p>Works: ${window.app.data.works.length}</p>`;
+                results.innerHTML += `<p>Examples: ${window.app.data.examples.length}</p>`;
+                results.innerHTML += `<p>Filtered Works: ${window.app.filteredData.works.length}</p>`;
+                results.innerHTML += `<p>Filtered Examples: ${window.app.filteredData.examples.length}</p>`;
+            } else {
+                results.innerHTML += `<p>App not found - this test needs to be run from the main app</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

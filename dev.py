@@ -85,6 +85,7 @@ def start_server(port=8000):
     
     # Use the main app directly
     os.environ['FLASK_ENV'] = 'development'
+    os.environ['FLASK_PORT'] = str(port)
     sys.path.insert(0, str(PROJECT_ROOT))
     
     try:
